@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Screen Comprehension Study</title>
+<!-- ============================================================
+     Device Fatigue — Study 2 (strip design, v2.0)
+     2 (battery 88/11, between) x 2 (processing phone/server, between)
+     x 4 rated jobs within (computation x size).
+     Backend: Supabase (assign_cell RPC returns condition strings so
+     arm/battery text is not present in page source).
+     ============================================================ -->
+<style>
+  :root { --accent:#1a56db; --err:#b91c1c; --muted:#6b7280; --line:#e5e7eb; --hl:#eef2ff; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         margin: 0; color: #1f2937; background: #f3f4f6; line-height: 1.5; }
+  #wrap { max-width: 980px; margin: 0 auto; padding: 16px 16px 60px; }
+  #progress { height: 6px; background: var(--line); border-radius: 3px; margin: 8px 0 18px; overflow: hidden; }
+  #progress > div { height: 100%; width: 0%; background: var(--accent); transition: width .3s; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 26px; }
+  h1 { font-size: 1.3rem; margin: 0 0 10px; }
+  button.primary { background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+                   padding: 12px 26px; font-size: 1rem; cursor: pointer; margin-top: 16px; }
+  button.primary:disabled { opacity: .45; cursor: default; }
+  .error { color: var(--err); margin-top: 12px; display: none; font-weight: 600; }
+  .muted { color: var(--muted); font-size: .88rem; }
+  .placeholder-banner { background: #fef2f2; border: 2px dashed var(--err); color: var(--err);
+                        padding: 9px 13px; border-radius: 8px; font-weight: 700; margin-bottom: 12px; font-size:.9rem; }
+  .consent-box { max-height: 300px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #fcfcfd; }
+  .choice label { display: block; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; cursor: pointer; }
+  .choice input { margin-right: 10px; }
+  textarea { width: 100%; min-height: 90px; font: inherit; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+  input[type=number], select, input[type=text] { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
+  label.block { display: block; margin: 13px 0 4px; font-weight: 600; }
+  code.cc { font-size: 1.25rem; background: var(--hl); padding: 6px 14px; border-radius: 8px; letter-spacing: 1px; }
+  table.likert { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  table.likert th { font-size: .7rem; font-weight: 600; color: var(--muted); padding: 6px 2px; vertical-align: bottom; }
+  table.likert td { text-align: center; padding: 9px 2px; border-top: 1px solid var(--line); }
+  table.likert td.item { text-align: left; font-size: .93rem; padding-right: 10px; width: 42%; }
+  table.likert input[type=radio] { width: 17px; height: 17px; cursor: pointer; }
+  /* two-pane job layout */
+  .twopane { display: flex; gap: 22px; align-items: flex-start; }
+  .rightpane { flex: 1; min-width: 0; }
+  /* phone mockup */
+  .phone { width: 292px; flex: 0 0 292px; background: #0b0f19; border-radius: 30px; padding: 10px;
+           box-shadow: 0 6px 24px rgba(0,0,0,.18); position: sticky; top: 12px; }
+  .screen { background: #fff; border-radius: 22px; overflow: hidden; }
+  .sbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 6px;
+          font-size: .78rem; font-weight: 600; color: #111827; background: #f9fafb; }
+  .sbar .right { display: flex; align-items: center; gap: 6px; }
+  .sig { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 10px; }
+  .sig i { width: 3px; background: #111827; border-radius: 1px; display: inline-block; }
+  .batt { display: inline-flex; align-items: center; gap: 4px; }
+  .batt .pct { font-variant-numeric: tabular-nums; }
+  .appbody { padding: 12px 12px 14px; }
+  .apphead { font-weight: 800; font-size: .95rem; margin-bottom: 2px; }
+  .appsub { font-size: .72rem; color: var(--muted); margin-bottom: 10px; }
+  .qrow { border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; margin: 6px 0; font-size: .78rem; }
+  .qrow .nm { font-weight: 700; }
+  .qrow .dt { color: var(--muted); font-size: .7rem; }
+  .qrow.cur { border-color: var(--accent); background: var(--hl); }
+  .runbtn { margin-top: 10px; width: 100%; background: #e5e7eb; color: #6b7280; border: 0; border-radius: 9px;
+            padding: 9px 0; font-weight: 700; font-size: .82rem; cursor: default; }
+  /* device snapshot */
+  .snap { border: 1px solid var(--line); border-radius: 12px; background: #fcfcfd; padding: 16px 18px; margin: 14px 0; }
+  .snap h3 { margin: 0 0 10px; font-size: .8rem; letter-spacing: .04em; color: var(--muted); text-transform: uppercase; }
+  .snapgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 26px; font-size: .92rem; }
+  .snapgrid .k { color: var(--muted); }
+  .snapgrid .row { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dotted var(--line); padding: 4px 0; }
+  /* job strip */
+  .strip { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 14px 0 6px; }
+  .sbox { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: .8rem; background: #fff; white-space: nowrap; }
+  .sbox.mid { border: 2px solid var(--accent); background: var(--hl); font-weight: 700; font-size: .88rem; padding: 10px 12px; }
+  .sbox .tag { display: inline-block; margin-left: 7px; padding: 1px 7px; border-radius: 999px; background: #111827; color: #fff;
+               font-size: .66rem; letter-spacing: .04em; vertical-align: 1px; }
+  .arrow { color: var(--muted); font-size: .85rem; }
+  .jobtitle { font-size: 1.02rem; font-weight: 700; margin: 2px 0 0; }
+  .jobmeta { color: var(--muted); font-size: .85rem; }
+  /* sliders */
+  .sl { margin: 20px 0 6px; }
+  .sl .prompt { font-weight: 600; margin-bottom: 6px; }
+  .sl .track { display: flex; align-items: center; gap: 10px; }
+  .sl input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 26px;
+                          background: transparent; cursor: pointer; }
+  .sl input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: #d1d5db; }
+  .sl input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px;
+        border-radius: 50%; background: var(--accent); margin-top: -6px; }
+  .sl input[type=range].naked::-webkit-slider-thumb { opacity: 0; }
+  .sl input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: #d1d5db; }
+  .sl input[type=range]::-moz-range-progress { background: transparent; }
+  .sl input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%;
+        background: var(--accent); border: 0; }
+  .sl input[type=range].naked::-moz-range-thumb { opacity: 0; }
+  .sl .anchors { display: flex; justify-content: space-between; font-size: .76rem; color: var(--muted); margin-top: 2px; gap: 20px; }
+  .sl .val { min-width: 34px; text-align: center; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .sl .val.hide { visibility: hidden; }
+  @media (max-width: 860px) { .twopane { flex-direction: column; } .phone { position: static; } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="progress"><div></div></div>
+  <div id="app" class="card" aria-live="polite"></div>
+</div>
+<script>
+"use strict";
+/* ================= 1. CONFIG ================= */
+const CONFIG = {
+  studyName: "df2_strip",
+  version: "2.0",
+  supabaseUrl: "https://afnozgximrthqlkbvzap.supabase.co",
+  supabaseKey: "sb_publishable_7p_CeUpo-nkJg3PuMcB_ig_8xpsVCN8",
+  desktopOnly: true,
+  completion: { platform: "code", code: "KES-2847-TEST",
+                prolificRedirect: "https://app.prolific.com/submissions/complete?cc=" },
+  minMinutes: 4,
+  ipSalt: "df2_kestrel_2026"
+};
+const OFFLINE = !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(CONFIG.supabaseUrl);
+
+/* Fallback condition strings (used ONLY if the assignment RPC is unreachable;
+   base64 so arm/battery text is not greppable in page source). */
+const FB = "eyJBIjp7ImNlbGwiOiJBIiwiYmF0dGVyeSI6IjExIiwiYXJtIjoicGhvbmUiLCJ0YWciOiJQSE9ORSIsImdhdGUiOiJwaG9uZSIsImNvdmVyIjoiVGhpcyB0ZXN0ZXLigJlzIGNvcHkgcnVucyBEb2NTY2FuIExvY2FsOiBhbGwgdGV4dC1yZWNvZ25pdGlvbiB3b3JrIGlzIGRvbmUgb24gdGhlIHBob25lIGl0c2VsZiwgYnkgdGhlIHBob25l4oCZcyBvd24gcHJvY2Vzc29yLiJ9LCJCIjp7ImNlbGwiOiJCIiwiYmF0dGVyeSI6Ijg4IiwiYXJtIjoicGhvbmUiLCJ0YWciOiJQSE9ORSIsImdhdGUiOiJwaG9uZSIsImNvdmVyIjoiVGhpcyB0ZXN0ZXLigJlzIGNvcHkgcnVucyBEb2NTY2FuIExvY2FsOiBhbGwgdGV4dC1yZWNvZ25pdGlvbiB3b3JrIGlzIGRvbmUgb24gdGhlIHBob25lIGl0c2VsZiwgYnkgdGhlIHBob25l4oCZcyBvd24gcHJvY2Vzc29yLiJ9LCJDIjp7ImNlbGwiOiJDIiwiYmF0dGVyeSI6IjExIiwiYXJtIjoic2VydmVyIiwidGFnIjoiU0VSVkVSIiwiZ2F0ZSI6InNlcnZlciIsImNvdmVyIjoiVGhpcyB0ZXN0ZXLigJlzIGNvcHkgcnVucyBEb2NTY2FuIExpbmtlZDogdGhlIHBob25lIGRvZXMgbm9uZSBvZiB0aGUgdGV4dC1yZWNvZ25pdGlvbiB3b3JrIOKAlCBpdCBwYXNzZXMgZWFjaCBwYWdlIHRvIERvY1NjYW7igJlzIHNlcnZlcnMsIGFuZCB0aGUgc2VydmVyc+KAmSBvd24gcHJvY2Vzc29ycyBkbyBhbGwgb2YgdGhlIHJlY29nbml0aW9uLiJ9LCJEIjp7ImNlbGwiOiJEIiwiYmF0dGVyeSI6Ijg4IiwiYXJtIjoic2VydmVyIiwidGFnIjoiU0VSVkVSIiwiZ2F0ZSI6InNlcnZlciIsImNvdmVyIjoiVGhpcyB0ZXN0ZXLigJlzIGNvcHkgcnVucyBEb2NTY2FuIExpbmtlZDogdGhlIHBob25lIGRvZXMgbm9uZSBvZiB0aGUgdGV4dC1yZWNvZ25pdGlvbiB3b3JrIOKAlCBpdCBwYXNzZXMgZWFjaCBwYWdlIHRvIERvY1NjYW7igJlzIHNlcnZlcnMsIGFuZCB0aGUgc2VydmVyc+KAmSBvd24gcHJvY2Vzc29ycyBkbyBhbGwgb2YgdGhlIHJlY29nbml0aW9uLiJ9fQ==";
+
+/* ================= 2. DATA ================= */
+const D = { study: CONFIG.studyName, version: CONFIG.version, status: "in_progress", blur_count: 0 };
+let COND = null;   // {cell, battery, arm, tag, gate, cover}
+
+/* ================= 3. Utilities ================= */
+function uuid() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16); });
+}
+function xmur3(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  return () => { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); return (h ^= h >>> 16) >>> 0; };
+}
+function mulberry32(a) {
+  return function () { a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+let RNG = Math.random;
+function shuffleSeeded(arr) { const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(RNG() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function el(h) { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstChild; }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+async function sha256hex(s) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, "0")).join("");
+}
+
+/* ================= 4. Identity ================= */
+function captureIds() {
+  const p = new URLSearchParams(location.search);
+  ["PROLIFIC_PID", "STUDY_ID", "SESSION_ID"].forEach(k => { if (p.get(k)) D[k] = p.get(k); });
+  D.pid = D.PROLIFIC_PID || null;
+  D.pid_source = D.pid ? "platform" : "generated";
+  if (!D.pid) D.pid = "gen_" + uuid().slice(0, 12);
+  const sidKey = "study_sid_" + CONFIG.studyName;
+  D.submission_id = localStorage.getItem(sidKey) || uuid();
+  try { localStorage.setItem(sidKey, D.submission_id); } catch (e) {}
+  RNG = mulberry32(xmur3(D.submission_id)());
+  D.force_cell = p.get("cell") || "";
+}
+function isMobile() {
+  if (navigator.userAgentData && typeof navigator.userAgentData.mobile === "boolean")
+    return navigator.userAgentData.mobile;
+  const coarse = matchMedia("(pointer: coarse)").matches;
+  const touch = (navigator.maxTouchPoints || 0) > 0;
+  const uaHit = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  return (coarse && touch) || uaHit;
+}
+function captureMeta() {
+  D.meta_ua = navigator.userAgent;
+  D.meta_screen_w = screen.width; D.meta_screen_h = screen.height;
+  D.meta_viewport_w = innerWidth; D.meta_viewport_h = innerHeight;
+  D.meta_dpr = devicePixelRatio || 1; D.meta_touch_points = navigator.maxTouchPoints || 0;
+}
+function hashIp() {   // parallel with render; silent failure; only a salted hash is kept
+  if (OFFLINE) return;
+  const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
+  fetch("https://api.ipify.org?format=json", { signal: ctl.signal })
+    .then(r => r.json()).then(j => sha256hex(j.ip + CONFIG.ipSalt))
+    .then(h => { D.ip_hash = h; }).catch(() => {});
+}
+
+/* ================= 5. Supabase transport ================= */
+function sbHeaders(extra) {
+  return Object.assign({ apikey: CONFIG.supabaseKey, Authorization: "Bearer " + CONFIG.supabaseKey,
+                         "Content-Type": "application/json" }, extra || {});
+}
+function logEvent(event, detail) {
+  if (OFFLINE) { console.log("[OFFLINE event]", event, detail || ""); return; }
+  fetch(CONFIG.supabaseUrl + "/rest/v1/events", { method: "POST",
+    headers: sbHeaders({ Prefer: "return=minimal" }),
+    body: JSON.stringify([{ submission_id: D.submission_id, pid: D.pid, event: event,
+                            detail: detail || {} }]) }).catch(() => {});
+}
+async function assignCondition() {
+  const condKey = "study_cond_" + CONFIG.studyName;
+  const cached = localStorage.getItem(condKey);
+  if (cached) { COND = JSON.parse(cached); applyCond("cached"); return; }
+  if (D.force_cell && /^[ABCD]$/.test(D.force_cell)) {   // testing hook; excludable via assignment_source
+    COND = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(FB), ch => ch.charCodeAt(0))))[D.force_cell]; applyCond("forced");
+    try { localStorage.setItem(condKey, JSON.stringify(COND)); } catch (e) {} return;
+  }
+  let source = "client_fallback";
+  if (!OFFLINE) {
+    try {
+      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
+      const r = await fetch(CONFIG.supabaseUrl + "/rest/v1/rpc/assign_cell", { method: "POST",
+        headers: sbHeaders(), body: JSON.stringify({ p_submission_id: D.submission_id, p_pid: D.pid }),
+        signal: ctl.signal });
+      clearTimeout(to);
+      const j = await r.json();
+      if (j && j.cell) { COND = j; source = "server_balanced"; }
+    } catch (e) { /* fall through */ }
+  }
+  if (!COND) {
+    const fb = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(FB), ch => ch.charCodeAt(0)))); const keys = Object.keys(fb);
+    COND = fb[keys[Math.floor(Math.random() * keys.length)]];
+    logEvent("assign_fallback", { cell: COND.cell });
+  }
+  try { localStorage.setItem(condKey, JSON.stringify(COND)); } catch (e) {}
+  applyCond(source);
+}
+function applyCond(source) {
+  D.cond_cell = COND.cell; D.cond_battery = COND.battery; D.cond_arm = COND.arm;
+  D.assignment_source = source; D.ts_assigned = new Date().toISOString();
+}
+let SUBMITTED = false;
+async function submitData() {
+  D.ts_end = new Date().toISOString();
+  D.duration_s = Math.round((Date.now() - START_MS) / 1000);
+  D.flag_fast = D.duration_s < CONFIG.minMinutes * 60 * 0.4 ? 1 : 0;
+  D.status = "complete";
+  if (OFFLINE) { console.log("[OFFLINE submit]", JSON.parse(JSON.stringify(D))); SUBMITTED = true; return true; }
+  const row = { submission_id: D.submission_id, pid: D.pid, status: D.status,
+                duration_s: D.duration_s, ip_hash: D.ip_hash || null, data: D };
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const r = await fetch(CONFIG.supabaseUrl + "/rest/v1/responses", { method: "POST",
+        headers: sbHeaders({ Prefer: "return=minimal" }), body: JSON.stringify([row]) });
+      if (r.status === 201 || r.status === 409) { SUBMITTED = true; logEvent("submit_ok"); return true; }
+      throw new Error("HTTP " + r.status);
+    } catch (e) {
+      if (attempt === 3) { logEvent("submit_fail", { err: String(e).slice(0, 180) }); return false; }
+      await new Promise(res => setTimeout(res, attempt === 1 ? 1000 : 3000));
+    }
+  }
+}
+addEventListener("pagehide", () => {
+  if (!SUBMITTED && D.ts_consent && !OFFLINE) {
+    fetch(CONFIG.supabaseUrl + "/rest/v1/events?apikey=" + encodeURIComponent(CONFIG.supabaseKey),
+      { method: "POST", headers: sbHeaders({ Prefer: "return=minimal" }), keepalive: true,
+        body: JSON.stringify([{ submission_id: D.submission_id, pid: D.pid, event: "abandon",
+          detail: { page: CURRENT_PAGE_ID, elapsed_s: Math.round((Date.now() - START_MS) / 1000) } }])
+      }).catch(() => {});
+  }
+});
+addEventListener("blur", () => { D.blur_count++; });
+
+/* ================= 6. Components ================= */
+const AGREE7 = ["Strongly disagree", "Disagree", "Somewhat disagree", "Neither agree nor disagree", "Somewhat agree", "Agree", "Strongly agree"];
+function likertGrid(name, prompt, items, anchors, opts) {
+  opts = opts || {};
+  const order = opts.shuffle ? shuffleSeeded(items) : items.slice();
+  let html = '<p>' + esc(prompt) + '</p><table class="likert"><tr><th></th>';
+  for (let i = 0; i < anchors.length; i++) html += '<th scope="col">' + (i + 1) + '<br>' + esc(anchors[i]) + '</th>';
+  html += "</tr>";
+  for (const it of order) {
+    html += '<tr><td class="item">' + esc(it.text) + "</td>";
+    for (let v = 1; v <= anchors.length; v++)
+      html += '<td><input type="radio" name="' + esc(it.code) + '" value="' + v + '" aria-label="' + esc(it.text) + ": " + v + '"></td>';
+    html += "</tr>";
+  }
+  html += "</table>";
+  return { html,
+    validate() { for (const it of order) if (!document.querySelector('input[name="' + it.code + '"]:checked')) return "Please answer every item before continuing."; return null; },
+    save() {
+      D[name + "_order"] = order.map(i => i.code).join(",");
+      for (const it of order) {
+        const v = parseInt(document.querySelector('input[name="' + it.code + '"]:checked').value, 10);
+        D[it.code] = v;
+        if (typeof it.correct === "number") D[it.code + "_pass"] = v === it.correct ? 1 : 0;
+      }
+    } };
+}
+/* 0-100 slider, thumb hidden until first input */
+function slider(code, prompt, anchorL, anchorR) {
+  const html =
+    '<div class="sl" data-code="' + code + '">' +
+    '<div class="prompt">' + prompt + "</div>" +
+    '<div class="track"><input type="range" min="0" max="100" value="50" class="naked" id="sl_' + code + '" ' +
+    'aria-label="' + esc(prompt.replace(/<[^>]*>/g, "")) + '">' +
+    '<div class="val hide" id="slv_' + code + '">–</div></div>' +
+    '<div class="anchors"><span>0 = ' + esc(anchorL) + "</span><span>100 = " + esc(anchorR) + "</span></div></div>";
+  return { code, html,
+    wire() {
+      const inp = document.getElementById("sl_" + code), val = document.getElementById("slv_" + code);
+      const touch = () => { inp.classList.remove("naked"); val.classList.remove("hide");
+        val.textContent = inp.value; inp.dataset.touched = "1"; };
+      inp.addEventListener("pointerdown", touch);
+      inp.addEventListener("keydown", touch);
+      inp.addEventListener("input", () => { touch(); val.textContent = inp.value; });
+    },
+    touched() { return document.getElementById("sl_" + code).dataset.touched === "1"; },
+    value() { return parseInt(document.getElementById("sl_" + code).value, 10); } };
+}
+/* phone mockup */
+function battGlyph(pct) {
+  const w = Math.max(2, Math.round(24 * pct / 100));
+  return '<span class="batt"><span class="pct">' + pct + '%</span>' +
+    '<svg width="33" height="14" viewBox="0 0 33 14" aria-label="battery ' + pct + ' percent">' +
+    '<rect x="0.75" y="0.75" width="28" height="12.5" rx="3" fill="none" stroke="#4b5563" stroke-width="1.5"/>' +
+    '<rect x="30.5" y="4.5" width="2.5" height="5" rx="1.25" fill="#4b5563"/>' +
+    '<rect x="2.5" y="2.5" width="' + w + '" height="9" rx="1.5" fill="#6b7280"/></svg></span>';
+}
+function statusBar() {
+  return '<div class="sbar"><span>08:47</span><span class="right">' +
+    '<span class="sig"><i style="height:3px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:9px"></i></span>' +
+    '<span>CelOne</span>' +
+    '<svg width="14" height="11" viewBox="0 0 14 11"><path d="M7 9.5 L4.2 6.7 a4.5 4.5 0 0 1 5.6 0 Z M2.1 4.6 a7.5 7.5 0 0 1 9.8 0 L10.4 6 a5.5 5.5 0 0 0 -6.8 0 Z" fill="#111827"/></svg>' +
+    battGlyph(parseInt(COND.battery, 10)) + "</span></div>";
+}
+const JOBS = {
+  rec_L:  { nm: "C-LARGE",  desc: "Read the printed text on 60 pages", meta: "60 pages · 48 MB", type: "rec"  },
+  rec_S:  { nm: "C-SMALL",  desc: "Read the printed text on 2 pages",  meta: "2 pages · 1.6 MB", type: "rec"  },
+  copy_L: { nm: "T-LARGE",  desc: "Copy 60 pages into the Archive folder", meta: "60 pages · 48 MB", type: "copy" },
+  copy_S: { nm: "T-SMALL",  desc: "Copy 2 pages into the Archive folder",  meta: "2 pages · 1.6 MB", type: "copy" }
+};
+const QUEUE_ORDER = ["rec_S", "rec_L", "copy_S", "copy_L"];   // display order in the phone queue (constant)
+function phonePane(curJob) {
+  let rows = "";
+  for (const k of QUEUE_ORDER) {
+    const j = JOBS[k];
+    rows += '<div class="qrow' + (curJob === k ? " cur" : "") + '"><span class="nm">' + j.nm + "</span> — " +
+      esc(j.desc) + '<div class="dt">' + j.meta + "</div></div>";
+  }
+  return '<div class="phone"><div class="screen">' + statusBar() +
+    '<div class="appbody"><div class="apphead">DocScan — Queue</div>' +
+    '<div class="appsub">4 jobs queued · not started</div>' + rows +
+    '<button class="runbtn" tabindex="-1" aria-disabled="true">Run (queued)</button></div></div></div>';
+}
+function stripHtml(jobKey) {
+  let mid;
+  if (jobKey === "practice") {
+    mid = 'Rotate 2 pages<span class="tag">PHONE</span>';
+  } else {
+    const j = JOBS[jobKey];
+    mid = j.type === "rec"
+      ? 'Recognize text<span class="tag">' + esc(COND.tag) + "</span>"
+      : 'Copy to Archive<span class="tag">PHONE</span>';
+  }
+  return '<div class="strip">' +
+    '<span class="sbox">Open pages</span><span class="arrow">→</span>' +
+    '<span class="sbox">Prepare</span><span class="arrow">→</span>' +
+    '<span class="sbox mid">' + mid + "</span>" +
+    '<span class="arrow">→</span><span class="sbox">Check</span>' +
+    '<span class="arrow">→</span><span class="sbox">Save</span></div>';
+}
+
+/* ================= 7. Pages ================= */
+let currentGrid = null, currentSliders = [];
+let JOB_SEQ = [];   // randomized rating order, set at assignment
+
+const PAGES = [
+  { /* -------- blocking attention screener -------- */
+    id: "screener",
+    render(c) {
+      c.innerHTML = "<h1>Before you begin</h1>" +
+        "<p>One quick question to make sure instructions on this page display correctly.</p>" +
+        '<div class="choice"><p><strong>For this question only, please select “Rarely” — regardless of what your real answer would be.</strong><br>' +
+        '<span class="muted">How often do you read the instructions in online studies?</span></p>' +
+        ["Never", "Rarely", "Sometimes", "Often", "Always"]
+          .map(t => '<label><input type="radio" name="scr1" value="' + t + '">' + t + "</label>").join("") + "</div>";
+    },
+    validate() {
+      const s = document.querySelector('input[name="scr1"]:checked');
+      if (!s) return "Please select an answer.";
+      D.screener = s.value;
+      if (s.value !== "Rarely") { renderScreenout("attention_screener"); return "__handled__"; }
+      return null;
+    }
+  },
+  { /* -------- consent (IRB placeholder) -------- */
+    id: "consent",
+    render(c) {
+      c.innerHTML =
+        '<div class="placeholder-banner">IRB PLACEHOLDER — replace this consent text with your approved consent form before launching. Delete this banner when done.</div>' +
+        "<h1>Screen Comprehension Study</h1>" +
+        '<div class="consent-box"><p><strong>Purpose.</strong> This study is about how people read everyday technology screens and what they expect to happen. It takes about 5–6 minutes.</p>' +
+        "<p><strong>Procedure.</strong> You will read a short description of a phone app, view screens from one user’s session, and rate how you expect several tasks to go, followed by brief questions.</p>" +
+        "<p><strong>Voluntary participation.</strong> Participation is voluntary. You may stop at any time by closing this window; partial data without a completed submission will not be analyzed.</p>" +
+        "<p><strong>Risks &amp; benefits.</strong> No anticipated risks beyond everyday computer use. Compensation is provided via the recruitment platform.</p>" +
+        "<p><strong>Confidentiality.</strong> Responses are recorded with your platform ID for payment purposes only and analyzed in anonymized form. No directly identifying information is stored; a one-way coded network identifier is kept solely to detect duplicate submissions.</p>" +
+        "<p><strong>Contact.</strong> Amin Shiri — [institution, email] — [IRB protocol #]</p></div>" +
+        '<label style="display:flex;gap:10px;align-items:flex-start;margin-top:16px;cursor:pointer">' +
+        '<input type="checkbox" id="consent_cb" style="width:18px;height:18px;margin-top:3px">' +
+        "<span>I am at least 18 years old, I have read the information above, and I agree to participate.</span></label>";
+    },
+    validate() { return document.getElementById("consent_cb").checked ? null : "Please check the box to consent, or close this window to decline."; },
+    async onExit() {
+      D.ts_consent = new Date().toISOString();
+      await assignCondition();                        // both factors assigned here; cover screen is arm-dependent
+      JOB_SEQ = shuffleSeeded(["rec_L", "rec_S", "copy_L", "copy_S"]);
+      D.job_order = JOB_SEQ.join(",");
+    }
+  },
+  { /* -------- cover story (only arm-dependent screen) -------- */
+    id: "cover",
+    render(c) {
+      c.innerHTML = "<h1>DocScan</h1>" +
+        "<p><strong>DocScan</strong> is a phone app that turns photographed paperwork — receipts, leases, forms — into searchable text and files it away. It is in beta.</p>" +
+        "<p>Before running a batch, DocScan’s <strong>Queue screen</strong> shows each job as a strip of boxes: what happens at each step, and which machine does it. The design team disagrees about whether people can read the queue and tell how a job will go. That is what you are here to test — not whether you like the app, but whether the screen communicates.</p>" +
+        "<p>You will see the queue exactly as it appeared on <strong>one beta tester’s phone</strong>, captured the moment before they tapped Run, along with the device details the app records with every session. Beta testers use their own phones, so devices differ from session to session; work with what this tester’s screen shows.</p>" +
+        '<p style="border:1px solid var(--line);border-radius:8px;padding:10px 14px;background:#fcfcfd">' + esc(COND.cover) + "</p>" +
+        "<p>Two things the phone always does itself, in both versions: opening files, and <strong>copying finished files into the Archive folder</strong>. Those are file operations, not recognition.</p>" +
+        "<p>You will look at four queued jobs and rate one highlighted step for each. There are no right answers.</p>";
+    }
+  },
+  { /* -------- comprehension gate (2 attempts, then return) -------- */
+    id: "gate",
+    render(c) {
+      c.innerHTML = "<h1>Quick check</h1><p>To make sure the setup was clear:</p>" +
+        '<div class="choice"><p><strong>1. In this tester’s copy of DocScan, which machine does the text recognition?</strong></p>' +
+        [["phone", "The phone itself"], ["server", "DocScan’s servers"], ["varies", "It varies by job"]]
+          .map(o => '<label><input type="radio" name="g1" value="' + o[0] + '">' + o[1] + "</label>").join("") +
+        "</div>" +
+        '<div class="choice"><p><strong>2. Who copies finished files into the Archive folder?</strong></p>' +
+        [["phone", "Always the phone"], ["server", "Always the servers"], ["free", "Whichever is free"]]
+          .map(o => '<label><input type="radio" name="g2" value="' + o[0] + '">' + o[1] + "</label>").join("") + "</div>";
+    },
+    validate() {
+      const a = document.querySelector('input[name="g1"]:checked'), b = document.querySelector('input[name="g2"]:checked');
+      if (!a || !b) return "Please answer both questions.";
+      D.comp_attempts = (D.comp_attempts || 0) + 1;
+      const ok = a.value === COND.gate && b.value === "phone";
+      if (ok) { D.comp_pass = 1; return null; }
+      if (D.comp_attempts >= 2) { renderCompFail(); return "__handled__"; }
+      showPage(PAGE_INDEX.cover, true);
+      return "That wasn’t quite right — please re-read the description and try again.";
+    }
+  },
+  { /* -------- device snapshot + phone (first battery exposure) -------- */
+    id: "snapshot",
+    nextLabel: "Continue",
+    render(c) {
+      const rows = [["Model", "Kestrel 6"], ["OS build", "14.2.1"],
+                    ["Storage free", "46.0 GB of 128 GB"], ["Last restart", "today, 08:15"],
+                    ["Signal / Wi-Fi", "full"], ["Battery", COND.battery + "%"],
+                    ["Battery health", "100% (normal)"], ["Low Power Mode", "Off"]];
+      c.innerHTML = '<div class="twopane"><div>' + phonePane(null) + "</div>" +
+        '<div class="rightpane"><h1>Session 214</h1>' +
+        "<p>Below are the device details DocScan recorded when this queue was captured, and the phone’s screen as the tester saw it.</p>" +
+        '<div class="snap"><h3>Tester’s device — recorded automatically</h3><div class="snapgrid">' +
+        rows.map(r => '<div class="row"><span class="k">' + r[0] + "</span><span><strong>" + r[1] + "</strong></span></div>").join("") +
+        "</div></div>" +
+        '<p class="muted">Take a moment to look over the phone’s screen on the left, the way you’d glance at a phone someone hands you. The button below unlocks in a few seconds.</p></div></div>';
+      const btnTimer = setInterval(() => {
+        const b = document.querySelector("button.primary");
+        if (!b) return;
+        const left = Math.ceil((8000 - (performance.now() - PAGE_ENTERED)) / 1000);
+        if (left <= 0) { b.disabled = false; b.textContent = "Continue"; clearInterval(btnTimer); }
+        else { b.disabled = true; b.textContent = "Continue (" + left + ")"; }
+      }, 250);
+    }
+  },
+  { /* -------- status-bar check (peripheral encoding; non-blocking flags) -------- */
+    id: "sbcheck",
+    render(c) {
+      c.innerHTML = '<div class="twopane"><div>' + phonePane(null) + "</div>" +
+        '<div class="rightpane"><h1>Did the screenshot render correctly?</h1>' +
+        "<p>Screens sometimes load wrong on older browsers. To confirm it rendered:</p>" +
+        '<div class="choice"><p><strong>What time does the status bar show?</strong></p>' +
+        ["08:47", "09:15", "12:30", "14:02"].map(t => '<label><input type="radio" name="sbt" value="' + t + '">' + t + "</label>").join("") + "</div>" +
+        '<div class="choice"><p><strong>And which carrier name?</strong></p>' +
+        ["CelOne", "Vertex", "Onda", "TelMax"].map(t => '<label><input type="radio" name="sbc" value="' + t + '">' + t + "</label>").join("") + "</div></div></div>";
+    },
+    validate() {
+      const t = document.querySelector('input[name="sbt"]:checked'), cr = document.querySelector('input[name="sbc"]:checked');
+      if (!t || !cr) return "Please answer both.";
+      D.sb_time = t.value; D.sb_time_pass = t.value === "08:47" ? 1 : 0;
+      D.sb_carrier = cr.value; D.sb_carrier_pass = cr.value === "CelOne" ? 1 : 0;
+      return null;
+    }
+  },
+  { /* -------- practice slider -------- */
+    id: "practice",
+    render(c) {
+      const s = slider("practice_spd", "Look at the highlighted step. Right now, how quickly will that step run?",
+        "Far below the best that step ever runs", "The very best that step ever runs");
+      currentSliders = [s];
+      c.innerHTML = '<div class="twopane"><div>' + phonePane(null) + "</div>" +
+        '<div class="rightpane"><h1>Practice</h1>' +
+        "<p>First, a practice round so the rating scale is familiar. <strong>Your answer here isn’t used.</strong></p>" +
+        '<p class="jobtitle">PRACTICE — Rotate 2 pages</p><p class="jobmeta">2 pages · 1.6 MB</p>' +
+        stripHtml("practice") + s.html +
+        '<p class="muted">Click or drag on the line to answer — the handle appears once you do.</p></div></div>';
+      s.wire();
+    },
+    validate() { return currentSliders[0].touched() ? null : "Please click on the rating line to answer."; },
+    onExit() { D.practice_spd = currentSliders[0].value(); }
+  },
+  /* -------- four job screens are generated below -------- */
+  { id: "job1", render(c) { renderJob(c, 0); }, validate: jobValidate, onExit() { jobSave(0); } },
+  { id: "job2", render(c) { renderJob(c, 1); }, validate: jobValidate, onExit() { jobSave(1); } },
+  { id: "job3", render(c) { renderJob(c, 2); }, validate: jobValidate, onExit() { jobSave(2); } },
+  { id: "job4", render(c) { renderJob(c, 3); }, validate: jobValidate, onExit() { jobSave(3); } },
+  { /* -------- funnel (before anything in study voice names battery) -------- */
+    id: "funnel",
+    render(c) {
+      c.innerHTML = "<h1>About the study itself</h1>" +
+        '<p class="muted">No right or wrong answers here — nothing you write affects your payment or approval.</p>' +
+        '<label class="block" for="f1">In your own words, what do you think this study is trying to find out?</label>' +
+        '<textarea id="f1" maxlength="5000"></textarea>' +
+        '<label class="block" for="f2">If you had a hunch about what was being tested, what was it?</label>' +
+        '<textarea id="f2" maxlength="5000"></textarea>' +
+        '<div class="choice"><p><strong>If you had a hunch — when did it first occur to you?</strong></p>' +
+        [["intro", "While reading the intro"], ["details", "Looking at the device details"],
+         ["ratings", "During the job ratings"], ["now", "Only now"], ["never", "I never had a hunch"]]
+          .map(o => '<label><input type="radio" name="f3" value="' + o[0] + '">' + o[1] + "</label>").join("") + "</div>";
+      ["f1", "f2"].forEach(id => { D[id + "_paste_n"] = 0;
+        document.getElementById(id).addEventListener("paste", () => { D[id + "_paste_n"]++; }); });
+    },
+    validate() {
+      if (document.getElementById("f1").value.trim().length < 1) return "Please write at least a word for the first question.";
+      if (!document.querySelector('input[name="f3"]:checked')) return "Please answer the last question.";
+      return null;
+    },
+    onExit() {
+      D.f1_about = document.getElementById("f1").value.trim().slice(0, 5000);
+      D.f2_hunch = document.getElementById("f2").value.trim().slice(0, 5000);
+      D.f3_timing = document.querySelector('input[name="f3"]:checked').value;
+      logEvent("funnel_committed", { f3: D.f3_timing });   // server-committed before battery is named
+    }
+  },
+  { /* -------- post 1: processing check + recalls -------- */
+    id: "post1",
+    render(c) {
+      const s = slider("pc_processing", "During the <strong>recognition</strong> jobs, how much of the actual work was the phone itself doing?",
+        "None of it", "All of it");
+      currentSliders = [s];
+      c.innerHTML = "<h1>A few checks</h1>" + s.html +
+        '<div class="choice" style="margin-top:18px"><p><strong>What battery level did the tester’s phone show?</strong></p>' +
+        ["11%", "23%", "76%", "88%", "I don’t remember"].map(t => '<label><input type="radio" name="rb" value="' + t + '">' + t + "</label>").join("") + "</div>" +
+        '<div class="choice"><p><strong>What did the device details show for Low Power Mode?</strong></p>' +
+        ["On", "Off", "It wasn’t shown", "I don’t remember"].map(t => '<label><input type="radio" name="rl" value="' + t + '">' + t + "</label>").join("") + "</div>";
+      s.wire();
+    },
+    validate() {
+      if (!currentSliders[0].touched()) return "Please answer the slider question.";
+      if (!document.querySelector('input[name="rb"]:checked') || !document.querySelector('input[name="rl"]:checked')) return "Please answer every question.";
+      return null;
+    },
+    onExit() {
+      D.pc_processing = currentSliders[0].value();
+      D.r_battery = document.querySelector('input[name="rb"]:checked').value;
+      D.r_battery_pass = D.r_battery === (COND.battery + "%") ? 1 : 0;
+      D.r_lpm = document.querySelector('input[name="rl"]:checked').value;
+      D.r_lpm_pass = D.r_lpm === "Off" ? 1 : 0;
+    }
+  },
+  { /* -------- post 2: belief moderator + embedded AC -------- */
+    id: "post2",
+    render(c) {
+      currentGrid = likertGrid("belief", "How much do you agree with each statement about phones in general?",
+        [
+          { code: "belief_1", text: "A phone with a low battery runs slower, even when it stays on." },
+          { code: "ac_grid", text: "For this one, please select “Somewhat disagree”.", correct: 3 },
+          { code: "belief_2r", text: "A phone at 20% works exactly as well as a phone at 80%.", reversed: true }
+        ], AGREE7, { shuffle: false });
+      c.innerHTML = "<h1>Phones in general</h1>" + currentGrid.html;
+    },
+    validate() { return currentGrid.validate(); },
+    onExit() { currentGrid.save(); }
+  },
+  { /* -------- post 3: mechanism + capability -------- */
+    id: "post3",
+    render(c) {
+      const opts = shuffleSeeded([
+        ["fuel",  "The phone has less energy to work with, so it gets less done — slower or less thorough — until it’s recharged."],
+        ["os",    "The phone’s software deliberately slows or postpones work to stretch the remaining charge, even when battery-saver is off."],
+        ["state", "A phone that low is just in a worse state all around — most things work worse, whatever the reason."],
+        ["halo",  "It’s more of a general sense than a specific reason — a very low battery just isn’t when a phone is at its best."],
+        ["cal",   "It works exactly the same as at a high charge — it will just shut down sooner."]
+      ]);
+      D.m1_order = opts.map(o => o[0]).join(",");
+      c.innerHTML = "<h1>Your own view</h1>" +
+        '<div class="choice"><p><strong>Think about phones in general. When a phone’s battery is very low — say around 10% — but the phone is still on and any battery-saver mode is OFF, which one statement comes closest to what you believe?</strong></p>' +
+        opts.map(o => '<label><input type="radio" name="m1" value="' + o[0] + '">' + esc(o[1]) + "</label>").join("") +
+        '<label><input type="radio" name="m1" value="other">Other — describe:</label>' +
+        '<input type="text" id="m1_other" style="width:100%;margin-top:4px" maxlength="400" placeholder=""></div>' +
+        '<div class="choice" style="margin-top:16px"><p><strong>Setting the battery aside: for reading the text off photographed pages, which do you think is more capable — a phone like this tester’s, or DocScan’s servers?</strong></p>' +
+        ["1 — The phone, by a lot", "2", "3", "4 — About equally capable", "5", "6", "7 — The servers, by a lot"]
+          .map((t, i) => '<label><input type="radio" name="m3" value="' + (i + 1) + '">' + t + "</label>").join("") + "</div>";
+    },
+    validate() {
+      const m = document.querySelector('input[name="m1"]:checked');
+      if (!m) return "Please choose the statement closest to your view.";
+      if (m.value === "other" && document.getElementById("m1_other").value.trim().length < 1) return "Please describe your view in the text box.";
+      if (!document.querySelector('input[name="m3"]:checked')) return "Please answer the last question.";
+      return null;
+    },
+    onExit() {
+      D.m1_mechanism = document.querySelector('input[name="m1"]:checked').value;
+      D.m1_other = document.getElementById("m1_other").value.trim().slice(0, 400);
+      D.m3_capability = parseInt(document.querySelector('input[name="m3"]:checked').value, 10);
+    }
+  },
+  { /* -------- post 4: background + realism + slider AC -------- */
+    id: "post4",
+    render(c) {
+      const s = slider("ac_slider", "Attention check: please move this slider to exactly 80.", "0", "100");
+      currentSliders = [s];
+      c.innerHTML = "<h1>Last questions</h1>" +
+        '<div class="choice"><p><strong>Do you have education or work experience in computing, IT, engineering, or electronics?</strong></p>' +
+        ["Yes", "No"].map(t => '<label><input type="radio" name="t1" value="' + t + '">' + t + "</label>").join("") + "</div>" +
+        '<label class="block" for="t2">About how many hours a day do you use your phone?</label>' +
+        '<input type="number" id="t2" min="0" max="24" step="0.5" style="width:110px">' +
+        '<div class="choice" style="margin-top:14px"><p><strong>How realistic did the study’s app screens feel?</strong></p>' +
+        ["1 — Not at all realistic", "2", "3", "4", "5", "6", "7 — Completely realistic"]
+          .map((t, i) => '<label><input type="radio" name="re1" value="' + (i + 1) + '">' + t + "</label>").join("") + "</div>" +
+        '<label class="block" for="re1_off">Did anything feel off? (optional)</label>' +
+        '<textarea id="re1_off" style="min-height:56px" maxlength="2000"></textarea>' + s.html;
+      s.wire();
+    },
+    validate() {
+      if (!document.querySelector('input[name="t1"]:checked')) return "Please answer the first question.";
+      const h = parseFloat(document.getElementById("t2").value);
+      if (!(h >= 0 && h <= 24)) return "Please enter your daily phone hours (0–24).";
+      if (!document.querySelector('input[name="re1"]:checked')) return "Please answer the realism question.";
+      if (!currentSliders[0].touched()) return "Please answer the attention-check slider.";
+      return null;
+    },
+    onExit() {
+      D.t1_tech = document.querySelector('input[name="t1"]:checked').value;
+      D.t2_hours = parseFloat(document.getElementById("t2").value);
+      D.re1_realism = parseInt(document.querySelector('input[name="re1"]:checked').value, 10);
+      D.re1_off = document.getElementById("re1_off").value.trim().slice(0, 2000);
+      D.ac_slider = currentSliders[0].value();
+      D.ac_slider_pass = Math.abs(D.ac_slider - 80) <= 1 ? 1 : 0;
+    }
+  },
+  { /* -------- debrief + submit -------- */
+    id: "debrief",
+    nextLabel: "Submit my responses",
+    render(c) {
+      c.innerHTML =
+        '<div class="placeholder-banner">IRB PLACEHOLDER — confirm this debrief wording with your IRB before launching. Delete this banner when done.</div>' +
+        "<h1>What this study was about</h1>" +
+        "<p>Different people saw the tester’s phone at different battery levels (11% or 88%), with recognition described as running on the phone or on DocScan’s servers. The screens were created for this study; DocScan is not a real app.</p>" +
+        "<p><strong>The fact being studied:</strong> with battery-saver off, a healthy phone works exactly the same at 11% as at 88% — a low battery changes how long it runs, not how well it works while it’s on.</p>" +
+        "<p>One request: please don’t describe the study’s details on forums or to others who might take it — knowing what a study is about changes how people answer.</p>" +
+        "<p>Questions? Contact the researcher via the recruitment platform. Click below to submit and receive your completion code.</p>";
+    }
+  }
+];
+const PAGE_INDEX = {}; PAGES.forEach((p, i) => PAGE_INDEX[p.id] = i);
+
+/* job page helpers */
+function renderJob(c, idx) {
+  const key = JOB_SEQ[idx]; const j = JOBS[key];
+  const s1 = slider("spd_" + key, "Look at the highlighted step. Right now, how quickly will that step run?",
+    "Far below the best that step ever runs", "The very best that step ever runs");
+  const s2 = slider("st_" + key, "How likely is it that this step stalls, or has to be retried?",
+    "Not at all likely", "Extremely likely");
+  currentSliders = [s1, s2];
+  c.innerHTML = '<div class="twopane"><div>' + phonePane(key) + "</div>" +
+    '<div class="rightpane"><h1>Job ' + (idx + 1) + " of 4</h1>" +
+    '<p class="jobtitle">' + j.nm + " — " + esc(j.desc) + '</p><p class="jobmeta">' + j.meta + "</p>" +
+    stripHtml(key) + s1.html + s2.html + "</div></div>";
+  s1.wire(); s2.wire();
+}
+function jobValidate() {
+  for (const s of currentSliders) if (!s.touched()) return "Please answer both rating lines (click on them).";
+  return null;
+}
+function jobSave(idx) {
+  const key = JOB_SEQ[idx];
+  D["spd_" + key] = currentSliders[0].value();
+  D["st_" + key] = currentSliders[1].value();
+}
+
+/* -------- terminal pages -------- */
+function app() { return document.getElementById("app"); }
+function renderScreenout(reason) {
+  logEvent("screenout_" + reason, { cell: D.cond_cell || "pre" });
+  app().innerHTML = "<h1>Thank you for your time</h1>" +
+    "<p>Based on the answer to the check question, the study cannot continue.</p>" +
+    "<p>Please <strong>return your submission</strong> on the recruitment platform — you will not be penalized and no rejection will be issued.</p>";
+}
+function renderCompFail() {
+  logEvent("screenout_comprehension", { cell: D.cond_cell || "unassigned" });
+  app().innerHTML = "<h1>Thank you for your time</h1>" +
+    "<p>Unfortunately the comprehension check was not passed, so the study cannot continue.</p>" +
+    "<p>Please <strong>return your submission</strong> on the recruitment platform — you will not be penalized and no rejection will be issued.</p>";
+}
+function renderDeviceBlock() {
+  logEvent("screenout_device", { ua: navigator.userAgent.slice(0, 180) });
+  app().innerHTML = "<h1>Desktop or laptop required</h1>" +
+    "<p>This study can only be completed on a desktop or laptop computer, and it looks like you are using a phone or tablet.</p>" +
+    "<p>Please <strong>return your submission</strong> on the recruitment platform — you will not be penalized. " +
+    "You are welcome to start again from a desktop or laptop.</p>";
+}
+function renderAlreadyDone() {
+  app().innerHTML = "<h1>Already completed</h1><p>Our records show this study has already been completed on this browser. " +
+    "If you believe this is an error, please contact the researcher via the recruitment platform.</p>";
+}
+function renderComplete(saved) {
+  const cc = CONFIG.completion;
+  let inner = "<h1>Thank you!</h1><p>Your responses have been " + (saved ? "recorded" : "prepared") + ".</p>";
+  if (!saved && !OFFLINE) {
+    inner += '<p class="error" style="display:block">We had trouble reaching our server. Your completion is still valid — ' +
+      "please copy the text below and send it to the researcher via the platform so no data is lost.</p>" +
+      '<textarea readonly style="min-height:80px">' + esc(JSON.stringify(D)) + "</textarea>";
+  }
+  if (cc.platform === "prolific") {
+    inner += "<p>Your completion code is <code class='cc'>" + esc(cc.code) + "</code></p>" +
+      "<p>You will be redirected to Prolific shortly. If not, <a href='" + esc(cc.prolificRedirect + cc.code) + "'>click here</a>.</p>";
+    setTimeout(() => { location.href = cc.prolificRedirect + cc.code; }, 4000);
+  } else {
+    inner += "<p>Your completion code is <code class='cc'>" + esc(cc.code) + "</code></p><p>Please copy it back into the study page on the platform.</p>";
+  }
+  app().innerHTML = inner;
+  try { localStorage.setItem("study_done_" + CONFIG.studyName, "1"); } catch (e) {}
+}
+
+/* ================= 8. Engine ================= */
+const START_MS = Date.now();
+let CURRENT = -1, CURRENT_PAGE_ID = "load", PAGE_ENTERED = 0;
+function showPage(i, isBack) {
+  const page = PAGES[i];
+  if (CURRENT >= 0 && !isBack)
+    D["t_" + PAGES[CURRENT].id + "_ms"] = (D["t_" + PAGES[CURRENT].id + "_ms"] || 0) + Math.round(performance.now() - PAGE_ENTERED);
+  CURRENT = i; CURRENT_PAGE_ID = page.id; PAGE_ENTERED = performance.now();
+  document.querySelector("#progress > div").style.width = Math.round((i / PAGES.length) * 100) + "%";
+  const c = app(); c.innerHTML = "";
+  page.render(c);
+  const err = el('<div class="error" role="alert"></div>');
+  const btn = el('<button class="primary">' + esc(page.nextLabel || "Continue") + "</button>");
+  c.appendChild(err); c.appendChild(btn);
+  if (page.id === "snapshot") { btn.disabled = true; }
+  btn.addEventListener("click", async () => {
+    const msg = page.validate ? page.validate() : null;
+    if (msg === "__handled__") return;
+    if (msg) { err.textContent = msg; err.style.display = "block"; return; }
+    err.style.display = "none"; btn.disabled = true; btn.textContent = "…";
+    D["t_" + page.id + "_ms"] = (D["t_" + page.id + "_ms"] || 0) + Math.round(performance.now() - PAGE_ENTERED);
+    try { if (page.onExit) await page.onExit(); } catch (e) { console.error(e); }
+    if (i + 1 < PAGES.length) showPage(i + 1);
+    else { const ok = await submitData(); renderComplete(ok); }
+  });
+  scrollTo(0, 0);
+}
+
+/* ================= 9. Boot ================= */
+(function boot() {
+  if (OFFLINE) document.body.appendChild(el('<div style="position:fixed;top:0;left:0;right:0;background:#92400e;color:#fff;text-align:center;padding:4px;font-size:.8rem;z-index:50">OFFLINE PREVIEW MODE — no endpoint configured; data logged to console only</div>'));
+  captureIds(); captureMeta(); hashIp();
+  D.ts_start = new Date().toISOString();
+  if (localStorage.getItem("study_done_" + CONFIG.studyName)) { renderAlreadyDone(); return; }
+  if (CONFIG.desktopOnly && isMobile()) { renderDeviceBlock(); return; }
+  logEvent("start", {});
+  showPage(0);
+})();
+</script>
+</body>
+</html>
