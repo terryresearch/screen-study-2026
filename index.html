@@ -149,6 +149,20 @@
   .hint{font-size:.85rem;color:var(--muted);margin-top:10px}
   .note-line{background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:14px 17px;font-size:.93rem;margin:14px 0}
   .note-line b{font-weight:600}
+  /* 7-point Likert scale */
+  .lk{margin:24px 0 6px}
+  .lk-q{font-weight:560;margin-bottom:14px;font-size:1.03rem;line-height:1.45}
+  .lk-row{display:flex;gap:8px}
+  .lk-pt{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 4px 12px;
+     border:1px solid var(--line);border-radius:13px;cursor:pointer;text-align:center;background:var(--card);
+     transition:border-color .12s,background .12s}
+  .lk-pt:hover{border-color:#D8CFBE;background:var(--card2)}
+  .lk-pt input{accent-color:var(--accent);width:18px;height:18px;margin:0;cursor:pointer}
+  .lk-num{font-weight:700;font-size:1rem;color:var(--ink);line-height:1}
+  .lk-lab{font-size:.76rem;color:var(--muted);line-height:1.22;min-height:2.3em;display:flex;align-items:center}
+  .lk-pt.sel{border-color:var(--accent);background:var(--accent-soft)}
+  .lk-pt.sel .lk-num,.lk-pt.sel .lk-lab{color:var(--accent-2)}
+  @media (max-width:600px){.lk-lab{font-size:.68rem}.lk-pt{padding:11px 3px 9px;gap:6px}}
   /* intro flow diagram */
   .flow{border:1px solid var(--line);border-radius:16px;background:var(--card2);padding:8px 20px;margin:22px 0}
   .flow-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:15px 0}
@@ -173,7 +187,7 @@
 /* ================= 1. CONFIG ================= */
 const CONFIG = {
   studyName: "df2_strip",
-  version: "3.1",
+  version: "3.2",
   supabaseUrl: "https://afnozgximrthqlkbvzap.supabase.co",
   supabaseKey: "sb_publishable_7p_CeUpo-nkJg3PuMcB_ig_8xpsVCN8",
   desktopOnly: true,
@@ -339,6 +353,22 @@ function radioBlock(name,prompt,opts){
 function wireOpts(){ document.querySelectorAll('.opt input[type=radio]').forEach(r=>{
   r.addEventListener("change",()=>{ const nm=r.name;
     document.querySelectorAll('input[name="'+nm+'"]').forEach(x=>x.closest(".opt")&&x.closest(".opt").classList.toggle("sel",x.checked)); }); }); }
+/* 7-point Likert: every point numbered and labelled */
+const SPEED_LABELS=["Very slowly","Slowly","A bit slowly","Average","A bit quickly","Quickly","Very quickly"];
+const STALL_LABELS=["Very unlikely","Unlikely","Somewhat unlikely","Even chance","Somewhat likely","Likely","Very likely"];
+const PROC_LABELS =["None of it","A little","Some","About half","Most","Nearly all","All of it"];
+function likert7(code,prompt,labels){
+  let cells="";
+  for(let v=1;v<=7;v++)
+    cells+='<label class="lk-pt"><input type="radio" name="'+code+'" value="'+v+'" aria-label="'+v+' &ndash; '+esc(labels[v-1])+'"><span class="lk-num">'+v+'</span><span class="lk-lab">'+esc(labels[v-1])+'</span></label>';
+  return { code,
+    html:'<div class="lk"><div class="lk-q">'+prompt+'</div><div class="lk-row">'+cells+'</div></div>',
+    validate(){ return document.querySelector('input[name="'+code+'"]:checked')?null:"Please choose an answer on every scale before continuing."; },
+    value(){ const c=document.querySelector('input[name="'+code+'"]:checked'); return c?parseInt(c.value,10):null; } };
+}
+function wireScales(){ document.querySelectorAll('.lk-row input[type=radio]').forEach(r=>{
+  r.addEventListener("change",()=>{ const nm=r.name;
+    document.querySelectorAll('input[name="'+nm+'"]').forEach(x=>{ const pt=x.closest('.lk-pt'); if(pt) pt.classList.toggle('sel',x.checked); }); }); }); }
 
 /* ---------- iPhone rendering ---------- */
 function battColor(pct){ return pct<=20 ? "#FF3B30" : "#34C759"; }   // iOS red (low) / green (high)
@@ -386,7 +416,7 @@ function phone(curKey){
   return '<div class="device"><div class="device-inner"><div class="screen">'+
     '<div class="di"></div>'+statusBar()+
     '<div class="ios-app">'+
-      '<div class="ios-title">Photos</div><div class="ios-sub">Batch tasks · paused</div>'+
+      '<div class="ios-title">Snapsort</div><div class="ios-sub">Batch tasks · paused</div>'+
       '<div class="ios-card"><div class="ios-h">Processing</div>'+
         '<div class="ios-row">Analysis<span class="v">'+esc(scanLocLabel())+'</span></div>'+
         '<div class="ios-row">Files<span class="v">On this iPhone</span></div>'+
@@ -408,14 +438,13 @@ function stripHtml(jobKey){
 }
 
 /* ================= 7. Pages ================= */
-let currentGrid=null, currentSliders=[];
+let currentGrid=null, currentScales=[];
 let JOB_SEQ=[];
 
 const PAGES=[
   { id:"consent",
     render(c){
       c.innerHTML=
-        '<div class="placeholder-banner">IRB PLACEHOLDER — replace with your approved consent form before launch. Delete this banner when done.</div>'+
         '<h1 class="big">Reading a phone screen</h1>'+
         '<div class="consent-box"><p><strong>Purpose.</strong> This is a short study about how people read everyday phone screens and what they expect to happen. It takes about 4&ndash;5 minutes.</p>'+
         '<p><strong>What you&rsquo;ll do.</strong> You&rsquo;ll look at a phone screen, then rate how you expect a few on-screen tasks to go, followed by a couple of general questions.</p>'+
@@ -433,57 +462,57 @@ const PAGES=[
   { id:"intro",
     render(c){
       c.innerHTML=
-        '<h1 class="big">You&rsquo;re the product tester for a minute</h1>'+
-        '<p class="lede">Before apps like this reach people, they get tried out under all sorts of setups &mdash; the kind of thing product-experience testers do. A tester looks at the app in one particular configuration and says how they&rsquo;d expect it to behave: where the work is set to run (on the phone itself, or up in the cloud), how much battery the phone has left, which model it is, and so on.</p>'+
-        '<p class="lede" style="margin-bottom:6px">The work itself splits into two kinds:</p>'+
+        '<h1 class="big">You&rsquo;re a product tester for a minute</h1>'+
+        '<p class="lede">Meet <strong>Snapsort</strong> &mdash; a phone app that tidies your camera roll for you. It reads the text inside your photos, spots duplicates, and files everything into albums, all on its own.</p>'+
+        '<p class="lede">Before an app like Snapsort ships, everyday people try it out as <strong>product testers</strong> &mdash; judging its <strong>output quality and performance</strong> across all sorts of setups: where the work runs (on the phone itself or up in the cloud), how much battery the phone has left, which model it is, and so on.</p>'+
+        '<p class="lede" style="margin-bottom:6px">Snapsort&rsquo;s work splits into two kinds:</p>'+
         flowDiagram()+
-        '<p class="lede">You&rsquo;ll take that role for one setup. On the next screen is a phone, captured the moment before it starts a batch of tasks. Look it over the way a tester would, then tell us how you expect a few of the steps to go &mdash; there are no right answers.</p>';
+        '<p class="lede">You&rsquo;ll take that role for one setup. On the next screen is a phone running Snapsort, captured the moment before it starts a batch of tasks. Look it over the way a tester would, then tell us how you expect a few of the steps to go &mdash; there are no right answers.</p>';
     }
   },
 
   { id:"orient",
     render(c){
-      const s=slider("practice_spd","Look at the highlighted step, then try the scale. Right now, how quickly will that step run?",
-        "Far below the best that step ever runs","The very best that step ever runs");
-      currentSliders=[s];
+      const s=likert7("practice_spd","Look at the highlighted step, then try the scale. How quickly do you expect it to run?",SPEED_LABELS);
+      currentScales=[s];
       c.innerHTML='<div class="twopane"><div class="phonecol"><div class="sticky">'+phone(null)+'</div></div>'+
-        '<div class="rightpane"><h1>Here&rsquo;s the screen</h1>'+
+        '<div class="rightpane"><h1>Here&rsquo;s the setup</h1>'+
         '<p>A couple of things worth noticing before we start:</p>'+
         '<div class="note-line">Reading and sorting can run on the phone or the cloud; moving and saving always stay on the phone. It&rsquo;s paused &mdash; nothing has started yet.</div>'+
         '<p class="steplabel">Sample step &mdash; for practice</p>'+stripHtml("practice")+s.html+
-        '<p class="hint">Click or drag anywhere on the line to answer &mdash; the marker appears once you do. Your practice answer isn&rsquo;t used.</p></div></div>';
-      s.wire();
+        '<p class="hint">Pick the point that fits. This practice answer isn&rsquo;t used.</p></div></div>';
+      wireScales();
       const btnTimer=setInterval(()=>{ const b=document.querySelector("button.primary"); if(!b) return;
         const left=Math.ceil((6000-(performance.now()-PAGE_ENTERED))/1000);
         if(left<=0){ b.disabled=false; b.textContent="Continue"; clearInterval(btnTimer); }
         else{ b.disabled=true; b.textContent="Continue ("+left+")"; } },250);
     },
-    validate(){ return currentSliders[0].touched()?null:"Please try the practice slider (click on the line) before continuing."; },
-    onExit(){ D.practice_spd=currentSliders[0].value(); }
+    validate(){ return currentScales[0].validate(); },
+    onExit(){ D.practice_spd=currentScales[0].value(); }
   },
 
   jobPage(0), jobPage(1), jobPage(2), jobPage(3),
 
   { id:"post1",
     render(c){
-      const proc=slider("pc_processing","During the two <strong>Scan</strong> tasks, how much of the actual work was the phone itself doing?","None of it","All of it");
-      currentSliders=[proc];
+      const proc=likert7("pc_processing","During the two <strong>Scan</strong> tasks, how much of the actual work was the phone itself doing?",PROC_LABELS);
+      currentScales=[proc];
       currentGrid=likertGrid("belief","How much do you agree with each statement about phones in general?",
         [{code:"belief_1",text:"A phone with a low battery runs slower, even when it stays on."},
          {code:"belief_2r",text:"A phone at 20% works exactly as well as a phone at 80%."}],AGREE7);
       c.innerHTML='<div class="narrow"><h1>A few quick questions</h1>'+proc.html+
-        '<div style="margin-top:24px">'+radioBlock("rb","What battery level did the phone show?",
+        '<div style="margin-top:26px">'+radioBlock("rb","What battery level did the phone show?",
           [["11","11%"],["23","23%"],["76","76%"],["88","88%"],["dk","I don’t remember"]])+'</div>'+
-        '<div style="margin-top:26px">'+currentGrid.html+'</div></div>';
-      proc.wire(); wireOpts();
+        '<div style="margin-top:28px">'+currentGrid.html+'</div></div>';
+      wireScales(); wireOpts();
     },
     validate(){
-      if(!currentSliders[0].touched()) return "Please answer the slider question.";
+      const m=currentScales[0].validate(); if(m) return m;
       if(!document.querySelector('input[name="rb"]:checked')) return "Please answer the battery question.";
       return currentGrid.validate();
     },
     onExit(){
-      D.pc_processing=currentSliders[0].value();
+      D.pc_processing=currentScales[0].value();
       D.r_battery=document.querySelector('input[name="rb"]:checked').value;
       D.r_battery_pass = D.r_battery===String(COND.battery) ? 1 : 0;
       currentGrid.save();
@@ -543,18 +572,17 @@ function jobPage(idx){
   return { id:"job"+(idx+1),
     render(c){
       const key=JOB_SEQ[idx], j=JOBS[key];
-      const s1=slider("spd_"+key,"Look at the highlighted step. Right now, how quickly will that step run?",
-        "Far below the best that step ever runs","The very best that step ever runs");
-      const s2=slider("st_"+key,"How likely is it that this step stalls, or has to be retried?","Not at all likely","Extremely likely");
-      currentSliders=[s1,s2];
+      const s1=likert7("spd_"+key,"Look at the highlighted step. How quickly do you expect it to run?",SPEED_LABELS);
+      const s2=likert7("st_"+key,"How likely is it that this step stalls, or has to be retried?",STALL_LABELS);
+      currentScales=[s1,s2];
       c.innerHTML='<div class="twopane"><div class="phonecol"><div class="sticky">'+phone(key)+'</div></div>'+
         '<div class="rightpane"><p class="steplabel">Task '+(idx+1)+' of 4</p>'+
         '<p class="jobtitle">'+esc(j.nm)+'</p><p class="jobmeta">'+esc(j.meta)+'</p>'+
         stripHtml(key)+s1.html+s2.html+'</div></div>';
-      s1.wire(); s2.wire();
+      wireScales();
     },
-    validate(){ for(const s of currentSliders) if(!s.touched()) return "Please answer both rating lines (click on each)."; return null; },
-    onExit(){ const key=JOB_SEQ[idx]; D["spd_"+key]=currentSliders[0].value(); D["st_"+key]=currentSliders[1].value(); }
+    validate(){ for(const s of currentScales){ const m=s.validate(); if(m) return m; } return null; },
+    onExit(){ const key=JOB_SEQ[idx]; D["spd_"+key]=currentScales[0].value(); D["st_"+key]=currentScales[1].value(); }
   };
 }
 const PAGE_INDEX={}; PAGES.forEach((p,i)=>PAGE_INDEX[p.id]=i);
