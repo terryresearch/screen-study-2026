@@ -3,134 +3,153 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Everyday Computing Study</title>
+<title>Reading a Phone Screen</title>
 <!-- ============================================================
-     Device Fatigue — Study 2 (strip design, v3.0 lean)
-     2 (battery 88/11, between) x 2 (processing iPhone/server, between)
-     x 4 rated jobs within (computation x size).
-     Both manipulations live ON the phone screen (status bar battery +
-     Processing row). Condition strings served by the assign_cell RPC.
+     Device Fatigue — Study 2 (v3.0)
+     2 (battery 88/11, between) x 2 (processing on-device/cloud, between)
+     x 4 rated jobs within (scan[analysis] x add[file], small/large).
+     Location manipulation lives ON the phone, beside the battery.
+     Backend: Supabase; condition (battery + arm) from assign_cell RPC.
      ============================================================ -->
 <style>
-  :root {
-    --ink: #1f1e1c; --ink-2: #56534e; --ink-3: #8a867f;
-    --paper: #faf9f7; --card: #ffffff; --line: #e8e5e0; --line-2: #dcd8d1;
-    --clay: #c15f3c; --clay-deep: #a94d2c; --clay-soft: #f7ece6;
-    --ios-blue: #0a84ff; --ios-bg: #f2f2f7; --ios-sep: #e5e5ea;
+  :root{
+    --bg:#F3F0E9; --card:#FFFFFF; --card2:#FBF9F4;
+    --ink:#23221D; --muted:#77726A; --line:#E7E2D6;
+    --accent:#C15F3C; --accent-2:#A54E30; --accent-soft:#F4E7DF;
+    --shadow:0 1px 2px rgba(35,34,29,.04),0 12px 32px -14px rgba(35,34,29,.14);
+    /* iOS phone palette */
+    --ios-bg:#EFEFF4; --ios-card:#FFFFFF; --ios-ink:#1C1C1E; --ios-muted:#8A8A8E;
+    --ios-sep:#E4E4EA; --batt:#8A8A8E;
   }
-  * { box-sizing: border-box; }
-  html { -webkit-font-smoothing: antialiased; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-         margin: 0; color: var(--ink); background: var(--paper); line-height: 1.55; }
-  #wrap { max-width: 1020px; margin: 0 auto; padding: 22px 20px 70px; }
-  #progress { height: 3px; background: var(--line); border-radius: 2px; margin: 4px 0 26px; overflow: hidden; }
-  #progress > div { height: 100%; width: 0%; background: var(--clay); transition: width .45s cubic-bezier(.4,0,.2,1); }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 34px 38px;
-          box-shadow: 0 1px 2px rgba(31,30,28,.04), 0 8px 28px rgba(31,30,28,.05); }
-  h1 { font-family: ui-serif, Georgia, "Times New Roman", serif; font-weight: 600; letter-spacing: -.01em;
-       font-size: 1.65rem; margin: 0 0 14px; color: var(--ink); }
-  p { margin: 0 0 12px; }
-  .lede { font-size: 1.04rem; color: var(--ink-2); }
-  button.primary { background: var(--clay); color: #fff; border: 0; border-radius: 999px;
-                   padding: 13px 32px; font-size: 1rem; font-weight: 600; letter-spacing: .01em;
-                   cursor: pointer; margin-top: 22px; transition: background .15s, transform .05s;
-                   box-shadow: 0 1px 2px rgba(169,77,44,.25); }
-  button.primary:hover:not(:disabled) { background: var(--clay-deep); }
-  button.primary:active:not(:disabled) { transform: translateY(1px); }
-  button.primary:disabled { opacity: .45; cursor: default; }
-  .error { color: #b91c1c; margin-top: 14px; display: none; font-weight: 600; font-size: .93rem; }
-  .muted { color: var(--ink-3); font-size: .88rem; }
-  .placeholder-banner { background: #fdf2f0; border: 1.5px dashed #c93f2b; color: #b0361f;
-                        padding: 10px 14px; border-radius: 12px; font-weight: 700; margin-bottom: 16px; font-size: .88rem; }
-  .consent-box { max-height: 290px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px;
-                 padding: 16px 18px; background: var(--paper); font-size: .95rem; }
-  .choice label { display: block; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px;
-                  margin: 8px 0; cursor: pointer; transition: border-color .12s, background .12s; }
-  .choice label:hover { border-color: var(--line-2); background: #fdfcfb; }
-  .choice input { margin-right: 10px; accent-color: var(--clay); }
-  input[type=number], input[type=text] { font: inherit; padding: 9px 12px; border: 1px solid var(--line-2);
-                  border-radius: 10px; background: #fff; }
-  label.block { display: block; margin: 14px 0 5px; font-weight: 600; }
-  code.cc { font-size: 1.3rem; background: var(--clay-soft); color: var(--clay-deep); padding: 7px 16px;
-            border-radius: 10px; letter-spacing: 1.5px; font-weight: 700; }
-  table.likert { width: 100%; border-collapse: collapse; margin-top: 12px; }
-  table.likert th { font-size: .68rem; font-weight: 600; color: var(--ink-3); padding: 6px 2px; vertical-align: bottom; }
-  table.likert td { text-align: center; padding: 11px 2px; border-top: 1px solid var(--line); }
-  table.likert td.item { text-align: left; font-size: .95rem; padding-right: 12px; width: 42%; }
-  table.likert input[type=radio] { width: 17px; height: 17px; cursor: pointer; accent-color: var(--clay); }
+  *{box-sizing:border-box}
+  html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{font-family:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+       margin:0;color:var(--ink);background:var(--bg);line-height:1.6;font-size:16.5px}
+  #wrap{max-width:1000px;margin:0 auto;padding:26px 22px 80px}
+  #progress{height:3px;background:rgba(0,0,0,.06);border-radius:999px;margin:2px 0 26px;overflow:hidden}
+  #progress>div{height:100%;width:0%;background:var(--accent);transition:width .5s cubic-bezier(.4,0,.2,1)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:34px 38px;box-shadow:var(--shadow)}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  #app{animation:rise .28s cubic-bezier(.2,.7,.2,1)}
+  h1{font-size:1.5rem;line-height:1.25;margin:0 0 14px;letter-spacing:-.02em;font-weight:600}
+  h1.big{font-size:1.72rem}
+  p{margin:0 0 14px}
+  .lede{font-size:1.06rem;color:#3a3934}
+  .muted{color:var(--muted);font-size:.92rem}
+  .narrow{max-width:600px}
+  button.primary{background:var(--accent);color:#fff;border:0;border-radius:12px;
+     padding:13px 30px;font-size:1rem;font-weight:560;cursor:pointer;margin-top:24px;
+     box-shadow:0 1px 2px rgba(193,95,60,.28),0 8px 20px -8px rgba(193,95,60,.5);
+     transition:transform .12s ease,background .15s ease,box-shadow .15s ease}
+  button.primary:hover:not(:disabled){background:var(--accent-2);transform:translateY(-1px)}
+  button.primary:active:not(:disabled){transform:translateY(0)}
+  button.primary:disabled{opacity:.4;cursor:default;box-shadow:none}
+  .error{color:var(--accent-2);margin-top:14px;display:none;font-weight:560;font-size:.94rem}
+  .placeholder-banner{background:#FBEEE9;border:1px dashed var(--accent);color:var(--accent-2);
+     padding:10px 14px;border-radius:12px;font-weight:600;margin-bottom:16px;font-size:.86rem}
+  .consent-box{max-height:280px;overflow-y:auto;border:1px solid var(--line);border-radius:14px;
+     padding:18px 20px;background:var(--card2);font-size:.95rem}
+  .consent-box p{margin:0 0 10px}
+  .check{display:flex;gap:12px;align-items:flex-start;margin-top:20px;cursor:pointer;font-size:.97rem}
+  .check input{width:19px;height:19px;margin-top:3px;accent-color:var(--accent)}
+  /* choice rows */
+  .choice{margin:6px 0 4px}
+  .choice .q{font-weight:560;margin:0 0 10px}
+  .opt{display:flex;gap:11px;align-items:flex-start;padding:12px 15px;border:1px solid var(--line);
+     border-radius:13px;margin:8px 0;cursor:pointer;transition:border-color .12s,background .12s;background:var(--card)}
+  .opt:hover{border-color:#D8CFBE;background:var(--card2)}
+  .opt input{margin-top:2px;accent-color:var(--accent);width:17px;height:17px;flex:0 0 auto}
+  .opt.sel{border-color:var(--accent);background:var(--accent-soft)}
+  input[type=number],input[type=text]{font:inherit;padding:11px 13px;border:1px solid var(--line);
+     border-radius:11px;background:var(--card);color:var(--ink)}
+  input[type=number]:focus,input[type=text]:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  label.block{display:block;margin:20px 0 7px;font-weight:560}
+  code.cc{font-size:1.2rem;background:var(--accent-soft);color:var(--accent-2);padding:7px 16px;
+     border-radius:10px;letter-spacing:2px;font-weight:600}
+  /* likert */
+  table.likert{width:100%;border-collapse:collapse;margin:8px 0 4px}
+  table.likert th{font-size:.66rem;font-weight:560;color:var(--muted);padding:5px 3px;vertical-align:bottom;line-height:1.25}
+  table.likert td{text-align:center;padding:12px 3px;border-top:1px solid var(--line)}
+  table.likert td.item{text-align:left;font-size:.95rem;padding-right:14px;width:42%}
+  table.likert input[type=radio]{width:18px;height:18px;cursor:pointer;accent-color:var(--accent)}
   /* two-pane */
-  .twopane { display: flex; gap: 34px; align-items: flex-start; }
-  .rightpane { flex: 1; min-width: 0; }
-  /* ---------- iPhone mockup ---------- */
-  .iphone { width: 322px; flex: 0 0 322px; position: sticky; top: 16px;
-            background: linear-gradient(160deg, #3a3a3d, #1b1b1e 40%, #2c2c30);
-            border-radius: 54px; padding: 11px; box-shadow: 0 2px 6px rgba(0,0,0,.18), 0 22px 50px rgba(31,30,28,.22),
-            inset 0 0 2px rgba(255,255,255,.25); }
-  .iscreen { background: var(--ios-bg); border-radius: 44px; overflow: hidden; position: relative; height: 648px;
-             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; }
-  .island { position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-            width: 84px; height: 25px; border-radius: 13px; background: #000; z-index: 5; }
-  .isbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 18px 6px;
-           font-size: .84rem; font-weight: 600; color: #000; }
-  .isbar .l { padding-left: 6px; font-variant-numeric: tabular-nums; }
-  .isbar .r { display: flex; align-items: center; gap: 5px; }
-  .sig { display: inline-flex; align-items: flex-end; gap: 1.6px; height: 11px; }
-  .sig i { width: 3.2px; background: #000; border-radius: 1px; display: inline-block; }
-  .ihead { padding: 12px 20px 4px; }
-  .ihead .lt { font-size: 1.55rem; font-weight: 800; letter-spacing: -.02em; color: #000; }
-  .ihead .st { font-size: .78rem; color: #6e6e73; margin-top: 1px; }
-  .icard { background: #fff; border-radius: 14px; margin: 10px 14px; overflow: hidden; }
-  .iproc { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; }
-  .iproc .k { display: flex; align-items: center; gap: 8px; font-size: .84rem; color: #000; }
-  .iproc .v { font-size: .84rem; font-weight: 600; color: #6e6e73; display: flex; align-items: center; gap: 5px; }
-  .irow { padding: 10px 14px; border-top: 1px solid var(--ios-sep); }
-  .irow:first-child { border-top: 0; }
-  .irow .a { font-size: .84rem; font-weight: 600; color: #000; }
-  .irow .b { font-size: .74rem; color: #6e6e73; margin-top: 1px; }
-  .irow.cur { background: #eaf3ff; }
-  .irow.cur .a { color: #0a62c9; }
-  .iscan { margin: 4px 14px 12px; }
-  .iscan button { width: 100%; border: 0; border-radius: 12px; padding: 11px 0; font-size: .9rem; font-weight: 600;
-                  background: #dfeafd; color: #6ea7e8; cursor: default; }
-  .ihome { position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
-           width: 120px; height: 4.5px; border-radius: 3px; background: #000; opacity: .85; }
-  .devline { margin-top: 14px; text-align: center; font-size: .8rem; color: var(--ink-3); }
+  .twopane{display:flex;gap:40px;align-items:flex-start}
+  .rightpane{flex:1;min-width:0;padding-top:4px}
+  .phonecol{flex:0 0 auto}
+  .sticky{position:sticky;top:22px}
+  /* ---------- iPhone ---------- */
+  .device{width:300px;padding:11px;border-radius:52px;
+     background:linear-gradient(150deg,#5a5a5e 0%,#2b2b2e 42%,#3c3c40 100%);
+     box-shadow:0 2px 3px rgba(0,0,0,.3),0 30px 55px -22px rgba(0,0,0,.55),inset 0 0 0 1.5px rgba(255,255,255,.10)}
+  .device-inner{border-radius:42px;background:#000;padding:3px}
+  .screen{position:relative;border-radius:39px;overflow:hidden;background:var(--ios-bg);height:648px;
+     display:flex;flex-direction:column}
+  .di{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:88px;height:26px;
+     background:#000;border-radius:15px;z-index:6}
+  .di::after{content:"";position:absolute;right:11px;top:8px;width:9px;height:9px;border-radius:50%;
+     background:radial-gradient(circle at 35% 30%,#25252a,#050506 70%)}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:15px 24px 8px;
+     font-size:14px;font-weight:600;color:var(--ios-ink);letter-spacing:.1px}
+  .sb-time{font-variant-numeric:tabular-nums;margin-left:2px}
+  .sb-ind{display:flex;align-items:center;gap:7px}
+  .batt{display:inline-flex;align-items:center;gap:5px}
+  .batt .pct{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ios-ink)}
+  .ios-app{flex:1;overflow:hidden;padding:8px 15px 0}
+  .ios-title{font-size:1.55rem;font-weight:700;letter-spacing:-.02em;color:var(--ios-ink);margin:2px 2px 1px}
+  .ios-sub{font-size:.8rem;color:var(--ios-muted);margin:0 2px 14px;font-weight:500}
+  .ios-card{background:var(--ios-card);border-radius:15px;overflow:hidden;margin-bottom:15px;
+     box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .ios-h{font-size:.66rem;font-weight:600;letter-spacing:.06em;color:var(--ios-muted);
+     padding:11px 15px 5px;text-transform:uppercase}
+  .ios-row{display:flex;justify-content:space-between;align-items:center;gap:10px;
+     padding:10px 15px;font-size:.9rem;color:var(--ios-ink);border-top:1px solid var(--ios-sep)}
+  .ios-row:first-of-type{border-top:0}
+  .ios-row .v{color:var(--ios-muted);font-weight:500;font-size:.87rem;text-align:right}
+  .ios-row.job{align-items:center}
+  .ios-row.job .jn{font-weight:600;font-size:.85rem;flex:1;min-width:0;overflow:hidden;
+     text-overflow:ellipsis;white-space:nowrap}
+  .ios-row.job.cur{background:#F5F3EF}
+  .ios-row.job.cur .jn::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+     background:var(--accent);margin-right:8px;vertical-align:1.5px}
+  .ios-count{font-size:.76rem;color:var(--ios-muted);font-variant-numeric:tabular-nums;white-space:nowrap;flex:0 0 auto}
+  .ios-startwrap{padding:4px 4px 0;text-align:center}
+  .ios-start{width:100%;background:#E4E4EA;color:#B3B3B8;border:0;border-radius:13px;
+     padding:12px 0;font-size:.94rem;font-weight:600;cursor:default}
+  .ios-note{font-size:.72rem;color:var(--ios-muted);margin-top:7px;font-weight:500}
   /* strip */
-  .strip { display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; margin: 18px 0 4px; }
-  .sbox { border: 1px solid var(--line-2); border-radius: 10px; padding: 7px 9px; font-size: .74rem;
-          background: #fff; white-space: nowrap; color: var(--ink-2); }
-  .sbox.mid { border: 2px solid var(--clay); background: var(--clay-soft); font-weight: 700;
-              font-size: .84rem; padding: 9px 11px; color: var(--ink); }
-  .sbox .tag { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px;
-               background: var(--ink); color: #fff; font-size: .64rem; font-weight: 700;
-               letter-spacing: .06em; text-transform: uppercase; vertical-align: 1.5px; }
-  .arrow { color: var(--line-2); font-size: .8rem; }
-  .jobkicker { font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--clay); }
-  .jobtitle { font-family: ui-serif, Georgia, serif; font-size: 1.3rem; font-weight: 600; margin: 4px 0 2px; }
-  .jobmeta { color: var(--ink-3); font-size: .88rem; }
-  /* sliders */
-  .sl { margin: 26px 0 8px; }
-  .sl .prompt { font-weight: 600; margin-bottom: 10px; }
-  .sl .track { display: flex; align-items: center; gap: 14px; }
-  .sl input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 28px;
-                          background: transparent; cursor: pointer; }
-  .sl input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--line-2); }
-  .sl input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px;
-        border-radius: 50%; background: var(--clay); margin-top: -8px;
-        box-shadow: 0 1px 3px rgba(169,77,44,.4), 0 0 0 4px rgba(193,95,60,.12); }
-  .sl input[type=range].naked::-webkit-slider-thumb { opacity: 0; }
-  .sl input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line-2); }
-  .sl input[type=range]::-moz-range-progress { background: transparent; }
-  .sl input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%;
-        background: var(--clay); border: 0; box-shadow: 0 1px 3px rgba(169,77,44,.4); }
-  .sl input[type=range].naked::-moz-range-thumb { opacity: 0; }
-  .sl .anchors { display: flex; justify-content: space-between; font-size: .77rem; color: var(--ink-3);
-                 margin-top: 6px; gap: 24px; }
-  .sl .val { min-width: 38px; text-align: center; font-weight: 700; color: var(--clay); font-size: 1.05rem;
-             font-variant-numeric: tabular-nums; }
-  .sl .val.hide { visibility: hidden; }
-  .rule { border: 0; border-top: 1px solid var(--line); margin: 22px 0; }
-  @media (max-width: 900px) { .twopane { flex-direction: column; } .iphone { position: static; } }
+  .steplabel{font-size:.72rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:2px 0 8px}
+  .jobtitle{font-size:1.16rem;font-weight:600;letter-spacing:-.01em;margin:0}
+  .jobmeta{color:var(--muted);font-size:.88rem;margin:2px 0 0}
+  .strip{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:18px 0 8px}
+  .sbox{border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:.82rem;
+     background:var(--card2);white-space:nowrap;color:#55524b}
+  .sbox.mid{border:1.5px solid var(--accent);background:var(--accent-soft);color:var(--ink);
+     font-weight:600;font-size:.9rem;padding:10px 13px}
+  .sbox .tag{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:999px;
+     background:#2f2d28;color:#fff;font-size:.68rem;font-weight:600;letter-spacing:.03em;vertical-align:1px}
+  .arrow{color:#C9C1B2;font-size:.9rem}
+  /* slider */
+  .sl{margin:26px 0 6px}
+  .sl .prompt{font-weight:560;margin-bottom:14px;font-size:1.02rem}
+  .sl .track{display:flex;align-items:center;gap:14px}
+  .sl input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:32px;background:transparent;cursor:pointer}
+  .sl input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:#E7E2D6}
+  .sl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;
+     background:#fff;border:2.5px solid var(--accent);box-shadow:0 2px 7px rgba(0,0,0,.18);margin-top:-9px;transition:transform .1s}
+  .sl input[type=range]::-webkit-slider-thumb:active{transform:scale(1.08)}
+  .sl input[type=range].naked::-webkit-slider-thumb{opacity:0}
+  .sl input[type=range]::-moz-range-track{height:6px;border-radius:999px;background:#E7E2D6}
+  .sl input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#fff;
+     border:2.5px solid var(--accent);box-shadow:0 2px 7px rgba(0,0,0,.18)}
+  .sl input[type=range].naked::-moz-range-thumb{opacity:0}
+  .sl .val{min-width:44px;text-align:center;font-weight:600;color:var(--accent);
+     font-variant-numeric:tabular-nums;font-size:1.05rem}
+  .sl .val.hide{visibility:hidden}
+  .sl .anchors{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);margin-top:6px;gap:24px}
+  .hint{font-size:.85rem;color:var(--muted);margin-top:10px}
+  .note-line{background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:14px 17px;font-size:.93rem;margin:14px 0}
+  .note-line b{font-weight:600}
+  @media (max-width:820px){.twopane{flex-direction:column;gap:26px}.sticky{position:static}.card{padding:26px 22px}}
 </style>
 </head>
 <body>
@@ -142,7 +161,7 @@
 "use strict";
 /* ================= 1. CONFIG ================= */
 const CONFIG = {
-  studyName: "df2_strip3",
+  studyName: "df2_strip",
   version: "3.0",
   supabaseUrl: "https://afnozgximrthqlkbvzap.supabase.co",
   supabaseKey: "sb_publishable_7p_CeUpo-nkJg3PuMcB_ig_8xpsVCN8",
@@ -153,545 +172,431 @@ const CONFIG = {
   ipSalt: "df2_kestrel_2026"
 };
 const OFFLINE = !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(CONFIG.supabaseUrl);
-
-/* Fallback condition strings (only if the assignment RPC is unreachable). */
-const FB = "eyJBIjp7ImNlbGwiOiJBIiwiYmF0dGVyeSI6IjExIiwiYXJtIjoicGhvbmUiLCJ0YWciOiJvbiBpUGhvbmUiLCJwcm9jIjoiT24gdGhpcyBpUGhvbmUifSwiQiI6eyJjZWxsIjoiQiIsImJhdHRlcnkiOiI4OCIsImFybSI6InBob25lIiwidGFnIjoib24gaVBob25lIiwicHJvYyI6Ik9uIHRoaXMgaVBob25lIn0sIkMiOnsiY2VsbCI6IkMiLCJiYXR0ZXJ5IjoiMTEiLCJhcm0iOiJzZXJ2ZXIiLCJ0YWciOiJvbiBzZXJ2ZXIiLCJwcm9jIjoiT24gc2VydmVyIn0sIkQiOnsiY2VsbCI6IkQiLCJiYXR0ZXJ5IjoiODgiLCJhcm0iOiJzZXJ2ZXIiLCJ0YWciOiJvbiBzZXJ2ZXIiLCJwcm9jIjoiT24gc2VydmVyIn19";
+/* fallback condition strings (only if the assign RPC is unreachable) */
+const FB = "eyJBIjp7ImNlbGwiOiJBIiwiYmF0dGVyeSI6IjExIiwiYXJtIjoicGhvbmUifSwiQiI6eyJjZWxsIjoiQiIsImJhdHRlcnkiOiI4OCIsImFybSI6InBob25lIn0sIkMiOnsiY2VsbCI6IkMiLCJiYXR0ZXJ5IjoiMTEiLCJhcm0iOiJzZXJ2ZXIifSwiRCI6eyJjZWxsIjoiRCIsImJhdHRlcnkiOiI4OCIsImFybSI6InNlcnZlciJ9fQ==";
 
 /* ================= 2. DATA ================= */
 const D = { study: CONFIG.studyName, version: CONFIG.version, status: "in_progress", blur_count: 0 };
-let COND = null;   // {cell, battery, arm, tag, proc}
+let COND = null;   // {cell, battery, arm}
 
 /* ================= 3. Utilities ================= */
-function uuid() {
-  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16); });
-}
-function xmur3(str) {
-  let h = 1779033703 ^ str.length;
-  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
-  return () => { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); return (h ^= h >>> 16) >>> 0; };
-}
-function mulberry32(a) {
-  return function () { a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-}
+function uuid(){ if(window.crypto&&crypto.randomUUID) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==="x"?r:(r&0x3|0x8)).toString(16);}); }
+function xmur3(str){ let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=(h<<13)|(h>>>19);}
+  return ()=>{h=Math.imul(h^(h>>>16),2246822507);h=Math.imul(h^(h>>>13),3266489909);return (h^=h>>>16)>>>0;}; }
+function mulberry32(a){ return function(){a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);
+  t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296;}; }
 let RNG = Math.random;
-function shuffleSeeded(arr) { const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(RNG() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
-function el(h) { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstChild; }
-function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
-async function sha256hex(s) {
-  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
-  return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, "0")).join("");
-}
+function shuffleSeeded(arr){ const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(RNG()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function el(h){ const t=document.createElement("template"); t.innerHTML=h.trim(); return t.content.firstChild; }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+async function sha256hex(s){ const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join(""); }
 
-/* ================= 4. Identity / device ================= */
-function captureIds() {
-  const p = new URLSearchParams(location.search);
-  ["PROLIFIC_PID", "STUDY_ID", "SESSION_ID"].forEach(k => { if (p.get(k)) D[k] = p.get(k); });
+/* ================= 4. Identity ================= */
+function captureIds(){
+  const p=new URLSearchParams(location.search);
+  ["PROLIFIC_PID","STUDY_ID","SESSION_ID"].forEach(k=>{ if(p.get(k)) D[k]=p.get(k); });
   D.pid = D.PROLIFIC_PID || null;
   D.pid_source = D.pid ? "platform" : "generated";
-  if (!D.pid) D.pid = "gen_" + uuid().slice(0, 12);
-  const sidKey = "study_sid_" + CONFIG.studyName;
+  if(!D.pid) D.pid = "gen_"+uuid().slice(0,12);
+  const sidKey="study_sid_"+CONFIG.studyName;
   D.submission_id = localStorage.getItem(sidKey) || uuid();
-  try { localStorage.setItem(sidKey, D.submission_id); } catch (e) {}
+  try{ localStorage.setItem(sidKey,D.submission_id); }catch(e){}
   RNG = mulberry32(xmur3(D.submission_id)());
   D.force_cell = p.get("cell") || "";
 }
-function isMobile() {
-  if (navigator.userAgentData && typeof navigator.userAgentData.mobile === "boolean")
-    return navigator.userAgentData.mobile;
-  const coarse = matchMedia("(pointer: coarse)").matches;
-  const touch = (navigator.maxTouchPoints || 0) > 0;
-  const uaHit = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  return (coarse && touch) || uaHit;
+function isMobile(){
+  if(navigator.userAgentData && typeof navigator.userAgentData.mobile==="boolean") return navigator.userAgentData.mobile;
+  const coarse=matchMedia("(pointer: coarse)").matches, touch=(navigator.maxTouchPoints||0)>0;
+  const uaHit=/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  return (coarse&&touch)||uaHit;
 }
-function captureMeta() {
-  D.meta_ua = navigator.userAgent;
-  D.meta_screen_w = screen.width; D.meta_screen_h = screen.height;
-  D.meta_viewport_w = innerWidth; D.meta_viewport_h = innerHeight;
-  D.meta_dpr = devicePixelRatio || 1; D.meta_touch_points = navigator.maxTouchPoints || 0;
+function captureMeta(){
+  D.meta_ua=navigator.userAgent; D.meta_screen_w=screen.width; D.meta_screen_h=screen.height;
+  D.meta_viewport_w=innerWidth; D.meta_viewport_h=innerHeight; D.meta_dpr=devicePixelRatio||1;
+  D.meta_touch_points=navigator.maxTouchPoints||0;
 }
-function hashIp() {
-  if (OFFLINE) return;
-  const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
-  fetch("https://api.ipify.org?format=json", { signal: ctl.signal })
-    .then(r => r.json()).then(j => sha256hex(j.ip + CONFIG.ipSalt))
-    .then(h => { D.ip_hash = h; }).catch(() => {});
+function hashIp(){
+  if(OFFLINE) return;
+  const ctl=new AbortController(); setTimeout(()=>ctl.abort(),2500);
+  fetch("https://api.ipify.org?format=json",{signal:ctl.signal}).then(r=>r.json())
+    .then(j=>sha256hex(j.ip+CONFIG.ipSalt)).then(h=>{D.ip_hash=h;}).catch(()=>{});
 }
 
 /* ================= 5. Supabase transport ================= */
-function sbHeaders(extra) {
-  return Object.assign({ apikey: CONFIG.supabaseKey, Authorization: "Bearer " + CONFIG.supabaseKey,
-                         "Content-Type": "application/json" }, extra || {});
+function sbHeaders(extra){ return Object.assign({ apikey:CONFIG.supabaseKey, Authorization:"Bearer "+CONFIG.supabaseKey,
+  "Content-Type":"application/json" }, extra||{}); }
+function logEvent(event,detail){
+  if(OFFLINE){ console.log("[OFFLINE event]",event,detail||""); return; }
+  fetch(CONFIG.supabaseUrl+"/rest/v1/events",{method:"POST",headers:sbHeaders({Prefer:"return=minimal"}),
+    body:JSON.stringify([{submission_id:D.submission_id,pid:D.pid,event:event,detail:detail||{}}])}).catch(()=>{});
 }
-function logEvent(event, detail) {
-  if (OFFLINE) { console.log("[OFFLINE event]", event, detail || ""); return; }
-  fetch(CONFIG.supabaseUrl + "/rest/v1/events", { method: "POST",
-    headers: sbHeaders({ Prefer: "return=minimal" }),
-    body: JSON.stringify([{ submission_id: D.submission_id, pid: D.pid, event: event,
-                            detail: detail || {} }]) }).catch(() => {});
-}
-function decodeFB() {
-  return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(FB), ch => ch.charCodeAt(0))));
-}
-async function assignCondition() {
-  const condKey = "study_cond_" + CONFIG.studyName;
-  const cached = localStorage.getItem(condKey);
-  if (cached) { COND = JSON.parse(cached); applyCond("cached"); return; }
-  if (D.force_cell && /^[ABCD]$/.test(D.force_cell)) {
-    COND = decodeFB()[D.force_cell]; applyCond("forced");
-    try { localStorage.setItem(condKey, JSON.stringify(COND)); } catch (e) {} return;
+async function assignCondition(){
+  const condKey="study_cond_"+CONFIG.studyName;
+  const cached=localStorage.getItem(condKey);
+  if(cached){ COND=JSON.parse(cached); applyCond("cached"); return; }
+  if(D.force_cell && /^[ABCD]$/.test(D.force_cell)){
+    COND=fbMap()[D.force_cell]; applyCond("forced");
+    try{ localStorage.setItem(condKey,JSON.stringify(COND)); }catch(e){} return;
   }
-  let source = "client_fallback";
-  if (!OFFLINE) {
-    try {
-      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
-      const r = await fetch(CONFIG.supabaseUrl + "/rest/v1/rpc/assign_cell", { method: "POST",
-        headers: sbHeaders(), body: JSON.stringify({ p_submission_id: D.submission_id, p_pid: D.pid }),
-        signal: ctl.signal });
+  let source="client_fallback";
+  if(!OFFLINE){
+    try{
+      const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),8000);
+      const r=await fetch(CONFIG.supabaseUrl+"/rest/v1/rpc/assign_cell",{method:"POST",
+        headers:sbHeaders(),body:JSON.stringify({p_submission_id:D.submission_id,p_pid:D.pid}),signal:ctl.signal});
       clearTimeout(to);
-      const j = await r.json();
-      if (j && j.cell) { COND = j; source = "server_balanced"; }
-    } catch (e) { /* fall through */ }
+      const j=await r.json();
+      if(j&&j.cell){ COND={cell:j.cell,battery:j.battery,arm:j.arm}; source="server_balanced"; }
+    }catch(e){}
   }
-  if (!COND) {
-    const fb = decodeFB(); const keys = Object.keys(fb);
-    COND = fb[keys[Math.floor(Math.random() * keys.length)]];
-    logEvent("assign_fallback", { cell: COND.cell });
-  }
-  try { localStorage.setItem(condKey, JSON.stringify(COND)); } catch (e) {}
+  if(!COND){ const fb=fbMap(); const keys=Object.keys(fb);
+    COND=fb[keys[Math.floor(Math.random()*keys.length)]]; logEvent("assign_fallback",{cell:COND.cell}); }
+  try{ localStorage.setItem(condKey,JSON.stringify(COND)); }catch(e){}
   applyCond(source);
 }
-function applyCond(source) {
-  D.cond_cell = COND.cell; D.cond_battery = COND.battery; D.cond_arm = COND.arm;
-  D.assignment_source = source; D.ts_assigned = new Date().toISOString();
+function fbMap(){ return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(FB),ch=>ch.charCodeAt(0)))); }
+function applyCond(source){
+  D.cond_cell=COND.cell; D.cond_battery=COND.battery; D.cond_arm=COND.arm;
+  D.assignment_source=source; D.ts_assigned=new Date().toISOString();
 }
-let SUBMITTED = false;
-async function submitData() {
-  D.ts_end = new Date().toISOString();
-  D.duration_s = Math.round((Date.now() - START_MS) / 1000);
-  D.flag_fast = D.duration_s < CONFIG.minMinutes * 60 * 0.4 ? 1 : 0;
-  D.status = "complete";
-  if (OFFLINE) { console.log("[OFFLINE submit]", JSON.parse(JSON.stringify(D))); SUBMITTED = true; return true; }
-  const row = { submission_id: D.submission_id, pid: D.pid, status: D.status,
-                duration_s: D.duration_s, ip_hash: D.ip_hash || null, data: D };
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const r = await fetch(CONFIG.supabaseUrl + "/rest/v1/responses", { method: "POST",
-        headers: sbHeaders({ Prefer: "return=minimal" }), body: JSON.stringify([row]) });
-      if (r.status === 201 || r.status === 409) { SUBMITTED = true; logEvent("submit_ok"); return true; }
-      throw new Error("HTTP " + r.status);
-    } catch (e) {
-      if (attempt === 3) { logEvent("submit_fail", { err: String(e).slice(0, 180) }); return false; }
-      await new Promise(res => setTimeout(res, attempt === 1 ? 1000 : 3000));
+let SUBMITTED=false;
+async function submitData(){
+  D.ts_end=new Date().toISOString();
+  D.duration_s=Math.round((Date.now()-START_MS)/1000);
+  D.flag_fast=D.duration_s<CONFIG.minMinutes*60*0.4?1:0;
+  D.status="complete";
+  if(OFFLINE){ console.log("[OFFLINE submit]",JSON.parse(JSON.stringify(D))); SUBMITTED=true; return true; }
+  const row={submission_id:D.submission_id,pid:D.pid,status:D.status,duration_s:D.duration_s,ip_hash:D.ip_hash||null,data:D};
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      const r=await fetch(CONFIG.supabaseUrl+"/rest/v1/responses",{method:"POST",
+        headers:sbHeaders({Prefer:"return=minimal"}),body:JSON.stringify([row])});
+      if(r.status===201||r.status===409){ SUBMITTED=true; logEvent("submit_ok"); return true; }
+      throw new Error("HTTP "+r.status);
+    }catch(e){
+      if(attempt===3){ logEvent("submit_fail",{err:String(e).slice(0,180)}); return false; }
+      await new Promise(res=>setTimeout(res,attempt===1?1000:3000));
     }
   }
 }
-addEventListener("pagehide", () => {
-  if (!SUBMITTED && D.ts_consent && !OFFLINE) {
-    fetch(CONFIG.supabaseUrl + "/rest/v1/events?apikey=" + encodeURIComponent(CONFIG.supabaseKey),
-      { method: "POST", headers: sbHeaders({ Prefer: "return=minimal" }), keepalive: true,
-        body: JSON.stringify([{ submission_id: D.submission_id, pid: D.pid, event: "abandon",
-          detail: { page: CURRENT_PAGE_ID, elapsed_s: Math.round((Date.now() - START_MS) / 1000) } }])
-      }).catch(() => {});
+addEventListener("pagehide",()=>{
+  if(!SUBMITTED&&D.ts_consent&&!OFFLINE){
+    fetch(CONFIG.supabaseUrl+"/rest/v1/events?apikey="+encodeURIComponent(CONFIG.supabaseKey),
+      {method:"POST",headers:sbHeaders({Prefer:"return=minimal"}),keepalive:true,
+       body:JSON.stringify([{submission_id:D.submission_id,pid:D.pid,event:"abandon",
+         detail:{page:CURRENT_PAGE_ID,elapsed_s:Math.round((Date.now()-START_MS)/1000)}}])}).catch(()=>{});
   }
 });
-addEventListener("blur", () => { D.blur_count++; });
+addEventListener("blur",()=>{ D.blur_count++; });
 
 /* ================= 6. Components ================= */
-const AGREE7 = ["Strongly disagree", "Disagree", "Somewhat disagree", "Neither agree nor disagree", "Somewhat agree", "Agree", "Strongly agree"];
-function likertGrid(name, prompt, items, anchors, opts) {
-  opts = opts || {};
-  const order = opts.shuffle ? shuffleSeeded(items) : items.slice();
-  let html = '<p style="font-weight:600">' + esc(prompt) + '</p><table class="likert"><tr><th></th>';
-  for (let i = 0; i < anchors.length; i++) html += '<th scope="col">' + (i + 1) + '<br>' + esc(anchors[i]) + '</th>';
-  html += "</tr>";
-  for (const it of order) {
-    html += '<tr><td class="item">' + esc(it.text) + "</td>";
-    for (let v = 1; v <= anchors.length; v++)
-      html += '<td><input type="radio" name="' + esc(it.code) + '" value="' + v + '" aria-label="' + esc(it.text) + ": " + v + '"></td>';
-    html += "</tr>";
-  }
-  html += "</table>";
+const AGREE7=["Strongly disagree","Disagree","Somewhat disagree","Neither","Somewhat agree","Agree","Strongly agree"];
+function likertGrid(name,prompt,items,anchors){
+  const order=items.slice();
+  let html='<p style="font-weight:560;margin-bottom:6px">'+esc(prompt)+'</p><table class="likert"><tr><th></th>';
+  for(let i=0;i<anchors.length;i++) html+='<th scope="col">'+(i+1)+'<br>'+esc(anchors[i])+'</th>';
+  html+="</tr>";
+  for(const it of order){ html+='<tr><td class="item">'+esc(it.text)+"</td>";
+    for(let v=1;v<=anchors.length;v++) html+='<td><input type="radio" name="'+esc(it.code)+'" value="'+v+'" aria-label="'+esc(it.text)+": "+v+'"></td>';
+    html+="</tr>"; }
+  html+="</table>";
   return { html,
-    validate() { for (const it of order) if (!document.querySelector('input[name="' + it.code + '"]:checked')) return "Please answer every item before continuing."; return null; },
-    save() {
-      D[name + "_order"] = order.map(i => i.code).join(",");
-      for (const it of order) {
-        D[it.code] = parseInt(document.querySelector('input[name="' + it.code + '"]:checked').value, 10);
-      }
-    } };
+    validate(){ for(const it of order) if(!document.querySelector('input[name="'+it.code+'"]:checked')) return "Please answer every row before continuing."; return null; },
+    save(){ for(const it of order){ D[it.code]=parseInt(document.querySelector('input[name="'+it.code+'"]:checked').value,10); } } };
 }
-function slider(code, prompt, anchorL, anchorR) {
-  const html =
-    '<div class="sl" data-code="' + code + '">' +
-    '<div class="prompt">' + prompt + "</div>" +
-    '<div class="track"><input type="range" min="0" max="100" value="50" class="naked" id="sl_' + code + '" ' +
-    'aria-label="' + esc(prompt.replace(/<[^>]*>/g, "")) + '">' +
-    '<div class="val hide" id="slv_' + code + '">–</div></div>' +
-    '<div class="anchors"><span>0 = ' + esc(anchorL) + "</span><span>100 = " + esc(anchorR) + "</span></div></div>";
+function slider(code,prompt,anchorL,anchorR){
+  const html='<div class="sl" data-code="'+code+'"><div class="prompt">'+prompt+'</div>'+
+    '<div class="track"><input type="range" min="0" max="100" value="50" class="naked" id="sl_'+code+'" aria-label="'+esc(prompt.replace(/<[^>]*>/g,""))+'">'+
+    '<div class="val hide" id="slv_'+code+'">50</div></div>'+
+    '<div class="anchors"><span>'+esc(anchorL)+'</span><span>'+esc(anchorR)+'</span></div></div>';
   return { code, html,
-    wire() {
-      const inp = document.getElementById("sl_" + code), val = document.getElementById("slv_" + code);
-      const touch = () => { inp.classList.remove("naked"); val.classList.remove("hide");
-        val.textContent = inp.value; inp.dataset.touched = "1"; };
-      inp.addEventListener("pointerdown", touch);
-      inp.addEventListener("keydown", touch);
-      inp.addEventListener("input", () => { touch(); val.textContent = inp.value; });
-    },
-    touched() { return document.getElementById("sl_" + code).dataset.touched === "1"; },
-    value() { return parseInt(document.getElementById("sl_" + code).value, 10); } };
+    wire(){ const inp=document.getElementById("sl_"+code), val=document.getElementById("slv_"+code);
+      const touch=()=>{ inp.classList.remove("naked"); val.classList.remove("hide"); val.textContent=inp.value; inp.dataset.touched="1"; };
+      inp.addEventListener("pointerdown",touch); inp.addEventListener("keydown",touch);
+      inp.addEventListener("input",()=>{ touch(); val.textContent=inp.value; }); },
+    touched(){ return document.getElementById("sl_"+code).dataset.touched==="1"; },
+    value(){ return parseInt(document.getElementById("sl_"+code).value,10); } };
 }
-/* ---------- iPhone mockup ---------- */
-function battGlyph(pct) {
-  const w = Math.max(2.5, 24.5 * pct / 100);
-  return '<svg width="35" height="15" viewBox="0 0 35 15" aria-label="battery ' + pct + ' percent" style="display:block">' +
-    '<rect x="0.75" y="1" width="29.5" height="13" rx="4" fill="none" stroke="rgba(0,0,0,.38)" stroke-width="1.1"/>' +
-    '<rect x="31.6" y="5.3" width="2.4" height="4.4" rx="1.2" fill="rgba(0,0,0,.38)"/>' +
-    '<rect x="2.5" y="2.75" width="' + w + '" height="9.5" rx="2.4" fill="#8e8e93"/>' +
-    '<text x="15.5" y="11.1" text-anchor="middle" font-size="9.5" font-weight="700" fill="#000">' + pct + '</text></svg>';
+function radioBlock(name,prompt,opts){
+  return '<div class="choice"><p class="q">'+prompt+'</p>'+
+    opts.map(o=>'<label class="opt"><input type="radio" name="'+name+'" value="'+esc(o[0])+'"><span>'+esc(o[1])+'</span></label>').join("")+'</div>';
 }
-function wifiGlyph() {
-  return '<svg width="17" height="12" viewBox="0 0 17 12"><path d="M8.5 11.2 L5.6 8.2 a4.6 4.6 0 0 1 5.8 0 Z" fill="#000"/>' +
-    '<path d="M3.7 6.2 a7.4 7.4 0 0 1 9.6 0 L11.9 7.7 a5.3 5.3 0 0 0 -6.8 0 Z" fill="#000"/>' +
-    '<path d="M1.4 3.8 a10.6 10.6 0 0 1 14.2 0 L14.2 5.3 a8.5 8.5 0 0 0 -11.4 0 Z" fill="#000"/></svg>';
+function wireOpts(){ document.querySelectorAll('.opt input[type=radio]').forEach(r=>{
+  r.addEventListener("change",()=>{ const nm=r.name;
+    document.querySelectorAll('input[name="'+nm+'"]').forEach(x=>x.closest(".opt")&&x.closest(".opt").classList.toggle("sel",x.checked)); }); }); }
+
+/* ---------- iPhone rendering ---------- */
+function battGlyph(pct){
+  const w=Math.max(2.2,(20*pct/100));
+  return '<span class="batt"><span class="pct">'+pct+'%</span>'+
+    '<svg width="27" height="13" viewBox="0 0 27 13" aria-label="battery '+pct+' percent">'+
+    '<rect x="0.6" y="0.6" width="22.4" height="11.8" rx="3" fill="none" stroke="#8A8A8E" stroke-width="1.1" opacity="0.55"/>'+
+    '<rect x="24.2" y="4.4" width="2" height="4.2" rx="1" fill="#8A8A8E" opacity="0.55"/>'+
+    '<rect x="2" y="2" width="'+w+'" height="9" rx="1.6" fill="#8A8A8E"/></svg></span>';
 }
-const JOBS = {
-  rec_L:  { act: "Read the text on 60 pages", doc: "Lease agreement", meta: "60 pages · 48 MB", type: "rec"  },
-  rec_S:  { act: "Read the text on 2 pages",  doc: "Parking receipt", meta: "2 pages · 1.6 MB", type: "rec"  },
-  copy_L: { act: "Copy 60 pages into Archive", doc: "Old tax scans",  meta: "60 pages · 48 MB", type: "copy" },
-  copy_S: { act: "Copy 2 pages into Archive",  doc: "Warranty card",  meta: "2 pages · 1.6 MB", type: "copy" }
+function statusBar(){
+  return '<div class="statusbar"><span class="sb-time">9:41</span><span class="sb-ind">'+
+    '<svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="7.5" width="3" height="4.5" rx="1" fill="#1c1c1e"/><rect x="4.5" y="5" width="3" height="7" rx="1" fill="#1c1c1e"/><rect x="9" y="2.5" width="3" height="9.5" rx="1" fill="#1c1c1e"/><rect x="13.5" y="0" width="3" height="12" rx="1" fill="#1c1c1e"/></svg>'+
+    '<svg width="17" height="12" viewBox="0 0 17 12"><path d="M8.5 2.2c2.6 0 5 1 6.8 2.7l-1.5 1.6A7.3 7.3 0 0 0 8.5 4.4 7.3 7.3 0 0 0 3.2 6.5L1.7 4.9A9.6 9.6 0 0 1 8.5 2.2Z" fill="#1c1c1e"/><path d="M8.5 6.1c1.5 0 2.9.6 3.9 1.6l-1.6 1.7A3 3 0 0 0 8.5 8.4c-.9 0-1.7.4-2.3 1L4.6 7.7A5.5 5.5 0 0 1 8.5 6.1Z" fill="#1c1c1e"/><circle cx="8.5" cy="10.6" r="1.4" fill="#1c1c1e"/></svg>'+
+    battGlyph(parseInt(COND.battery,10))+'</span></div>';
+}
+const JOBS={
+  scan_L:{nm:"Scan 60 photos for text", q:"Scan for text", meta:"60 photos", type:"scan"},
+  scan_S:{nm:"Scan 2 photos for text",  q:"Scan for text", meta:"2 photos",  type:"scan"},
+  add_L: {nm:"Add 60 photos to Album",  q:"Add to Album",  meta:"60 photos", type:"add"},
+  add_S: {nm:"Add 2 photos to Album",   q:"Add to Album",  meta:"2 photos",  type:"add"}
 };
-const QUEUE_ORDER = ["rec_S", "rec_L", "copy_S", "copy_L"];
-function iphonePane(curJob) {
-  let rows = "";
-  for (const k of QUEUE_ORDER) {
-    const j = JOBS[k];
-    rows += '<div class="irow' + (curJob === k ? " cur" : "") + '"><div class="a">' + esc(j.act) + "</div>" +
-      '<div class="b">' + esc(j.doc) + " · " + j.meta + "</div></div>";
-  }
-  return '<div class="iphone"><div class="iscreen">' +
-    '<div class="island"></div>' +
-    '<div class="isbar"><span class="l">08:47</span><span class="r">' +
-    '<span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8.5px"></i><i style="height:11px"></i></span>' +
-    wifiGlyph() + battGlyph(parseInt(COND.battery, 10)) + "</span></div>" +
-    '<div class="ihead"><div class="lt">Scans</div><div class="st">Documents · 4 in queue</div></div>' +
-    '<div class="icard"><div class="iproc"><span class="k">' +
-    '<svg width="15" height="15" viewBox="0 0 15 15"><rect x="2" y="2" width="11" height="11" rx="2.4" fill="none" stroke="#6e6e73" stroke-width="1.3"/><rect x="4.6" y="4.6" width="5.8" height="5.8" rx="1.2" fill="#6e6e73"/></svg>' +
-    'Processing</span><span class="v">' + esc(COND.proc) +
-    '<svg width="7" height="11" viewBox="0 0 7 11"><path d="M1 1 L5.6 5.5 L1 10" fill="none" stroke="#c7c7cc" stroke-width="1.8" stroke-linecap="round"/></svg></span></div></div>' +
-    '<div class="icard">' + rows + "</div>" +
-    '<div class="iscan"><button tabindex="-1" aria-disabled="true">Scan All</button></div>' +
-    '<div class="ihome"></div></div></div>';
+const QUEUE_ORDER=["scan_S","scan_L","add_S","add_L"];
+function scanLocLabel(){ return COND.arm==="server" ? "Cloud servers" : "On this iPhone"; }
+function scanTag(){ return COND.arm==="server" ? "Cloud" : "iPhone"; }
+function phone(curKey){
+  let jobs="";
+  for(const k of QUEUE_ORDER){ const j=JOBS[k];
+    jobs+='<div class="ios-row job'+(curKey===k?" cur":"")+'"><div class="jn">'+esc(j.q)+'</div>'+
+      '<div class="ios-count">'+esc(j.meta)+'</div></div>'; }
+  return '<div class="device"><div class="device-inner"><div class="screen">'+
+    '<div class="di"></div>'+statusBar()+
+    '<div class="ios-app">'+
+      '<div class="ios-title">Photos</div><div class="ios-sub">Batch tasks · paused</div>'+
+      '<div class="ios-card"><div class="ios-h">Processing</div>'+
+        '<div class="ios-row">Analysis<span class="v">'+esc(scanLocLabel())+'</span></div>'+
+        '<div class="ios-row">Files<span class="v">On this iPhone</span></div>'+
+        '<div class="ios-row">Low Power Mode<span class="v">Off</span></div>'+
+      '</div>'+
+      '<div class="ios-card"><div class="ios-h">In the queue</div>'+jobs+'</div>'+
+      '<div class="ios-startwrap"><button class="ios-start" tabindex="-1" aria-disabled="true">Start batch</button>'+
+        '<div class="ios-note">Nothing has started yet</div></div>'+
+    '</div></div></div></div>';
 }
-function stripHtml(jobKey) {
+function stripHtml(jobKey){
   let mid;
-  if (jobKey === "practice") {
-    mid = 'Rotate 2 pages<span class="tag">on iPhone</span>';
-  } else {
-    const j = JOBS[jobKey];
-    mid = j.type === "rec"
-      ? 'Read text<span class="tag">' + esc(COND.tag) + "</span>"
-      : 'Copy to Archive<span class="tag">on iPhone</span>';
-  }
-  return '<div class="strip">' +
-    '<span class="sbox">Open pages</span><span class="arrow">→</span>' +
-    '<span class="sbox">Prepare</span><span class="arrow">→</span>' +
-    '<span class="sbox mid">' + mid + "</span>" +
-    '<span class="arrow">→</span><span class="sbox">Check</span>' +
-    '<span class="arrow">→</span><span class="sbox">Save</span></div>';
+  if(jobKey==="practice") mid='Rotate photo<span class="tag">iPhone</span>';
+  else{ const j=JOBS[jobKey];
+    mid = j.type==="scan" ? 'Scan text<span class="tag">'+esc(scanTag())+'</span>' : 'Add to Album<span class="tag">iPhone</span>'; }
+  return '<div class="strip"><span class="sbox">Open</span><span class="arrow">&rarr;</span>'+
+    '<span class="sbox">Prepare</span><span class="arrow">&rarr;</span>'+
+    '<span class="sbox mid">'+mid+'</span><span class="arrow">&rarr;</span>'+
+    '<span class="sbox">Check</span><span class="arrow">&rarr;</span><span class="sbox">Save</span></div>';
 }
 
 /* ================= 7. Pages ================= */
-let currentGrid = null, currentSliders = [];
-let JOB_SEQ = [];
+let currentGrid=null, currentSliders=[];
+let JOB_SEQ=[];
 
-const PAGES = [
-  { /* -------- consent -------- */
-    id: "consent",
-    render(c) {
-      c.innerHTML =
-        '<div class="placeholder-banner">IRB PLACEHOLDER — replace this consent text with your approved consent form before launching. Delete this banner when done.</div>' +
-        "<h1>Everyday Computing Study</h1>" +
-        '<div class="consent-box"><p><strong>Purpose.</strong> This study is about people’s intuitions regarding everyday computing — how quickly things run and where the work happens. It takes about 4 minutes.</p>' +
-        "<p><strong>Procedure.</strong> You will look at one phone screen and rate how you expect four small jobs to run, followed by a few short questions.</p>" +
-        "<p><strong>Voluntary participation.</strong> Participation is voluntary. You may stop at any time by closing this window; partial data without a completed submission will not be analyzed.</p>" +
-        "<p><strong>Risks &amp; benefits.</strong> No anticipated risks beyond everyday computer use. Compensation is provided via the recruitment platform.</p>" +
-        "<p><strong>Confidentiality.</strong> Responses are recorded with your platform ID for payment purposes only and analyzed in anonymized form. No directly identifying information is stored; a one-way coded network identifier is kept solely to detect duplicate submissions.</p>" +
-        "<p><strong>Contact.</strong> Amin Shiri — [institution, email] — [IRB protocol #]</p></div>" +
-        '<label style="display:flex;gap:10px;align-items:flex-start;margin-top:18px;cursor:pointer">' +
-        '<input type="checkbox" id="consent_cb" style="width:18px;height:18px;margin-top:3px;accent-color:var(--clay)">' +
-        "<span>I am at least 18 years old, I have read the information above, and I agree to participate.</span></label>";
+const PAGES=[
+  { id:"consent",
+    render(c){
+      c.innerHTML=
+        '<div class="placeholder-banner">IRB PLACEHOLDER — replace with your approved consent form before launch. Delete this banner when done.</div>'+
+        '<h1 class="big">Reading a phone screen</h1>'+
+        '<div class="consent-box"><p><strong>Purpose.</strong> This is a short study about how people read everyday phone screens and what they expect to happen. It takes about 4&ndash;5 minutes.</p>'+
+        '<p><strong>What you&rsquo;ll do.</strong> You&rsquo;ll look at a phone screen, then rate how you expect a few on-screen tasks to go, followed by a couple of general questions.</p>'+
+        '<p><strong>Voluntary.</strong> Participation is voluntary; you may stop anytime by closing the window. Partial responses without a completed submission are not analyzed.</p>'+
+        '<p><strong>Risks &amp; benefits.</strong> No risks beyond ordinary computer use. You are paid through the recruitment platform.</p>'+
+        '<p><strong>Confidentiality.</strong> Responses are stored with your platform ID for payment only and analyzed anonymously. No directly identifying information is kept; a one-way coded network identifier is stored solely to detect duplicate submissions.</p>'+
+        '<p><strong>Contact.</strong> Amin Shiri &mdash; [institution, email] &mdash; [IRB protocol #]</p></div>'+
+        '<label class="check"><input type="checkbox" id="consent_cb"><span>I am at least 18 years old, I have read the above, and I agree to participate.</span></label>';
     },
-    validate() { return document.getElementById("consent_cb").checked ? null : "Please check the box to consent, or close this window to decline."; },
-    async onExit() {
-      D.ts_consent = new Date().toISOString();
-      await assignCondition();
-      JOB_SEQ = shuffleSeeded(["rec_L", "rec_S", "copy_L", "copy_S"]);
-      D.job_order = JOB_SEQ.join(",");
+    validate(){ return document.getElementById("consent_cb").checked?null:"Please check the box to consent, or close the window to decline."; },
+    async onExit(){ D.ts_consent=new Date().toISOString(); await assignCondition();
+      JOB_SEQ=shuffleSeeded(["scan_L","scan_S","add_L","add_S"]); D.job_order=JOB_SEQ.join(","); }
+  },
+
+  { id:"intro",
+    render(c){
+      c.innerHTML=
+        '<h1 class="big">A quick look at how phones work now</h1>'+
+        '<p class="lede">Phones do a lot of quiet work on their own &mdash; reading the text inside your photos, finding duplicates, sorting your library. Some of that work runs <strong>on the phone itself</strong>. Some of it is handed off to the <strong>company&rsquo;s servers</strong>.</p>'+
+        '<p class="lede">We&rsquo;re studying something simple: whether people can look at one of these screens and tell how the work is going to go.</p>'+
+        '<p class="lede">On the next screen is a phone, paused the instant before it starts a batch of tasks. Look it over the way you would if someone handed it to you. Then we&rsquo;ll ask how you expect a few of the steps to turn out. There are no right answers.</p>';
     }
   },
-  { /* -------- intro: honest and minimal, no fiction -------- */
-    id: "intro",
-    render(c) {
-      c.innerHTML =
-        "<h1>Four small jobs</h1>" +
-        '<p class="lede">Phones do two kinds of work: some of it happens on the phone itself, and some happens on a server, with the phone just sending and receiving. We study people’s intuitions about how this kind of work runs.</p>' +
-        '<p class="lede">On the next screen you’ll see one phone, exactly as its screen looked the moment before it ran <strong>four small jobs</strong> on some scanned documents. Look it over the way you’d glance at any phone. Then you’ll rate one step of each job.</p>' +
-        "<p class=\"lede\">There are no right or wrong answers — go with your sense of it.</p>";
-    }
-  },
-  { /* -------- stimulus: BOTH manipulations on the phone screen -------- */
-    id: "stimulus",
-    nextLabel: "Continue",
-    render(c) {
-      c.innerHTML = '<div class="twopane"><div>' + iphonePane(null) +
-        '<div class="devline">Battery health 100% · Low Power Mode off · owned 6 months</div></div>' +
-        '<div class="rightpane"><h1>The phone</h1>' +
-        '<p class="lede">This is the phone, a moment before its owner taps <strong>Scan All</strong>. The queue lists the four jobs; the <strong>Processing</strong> line shows where the text-reading work runs. Copying files into the Archive always happens on the phone itself.</p>' +
-        '<p class="muted">Take a moment with the screen — the button below unlocks in a few seconds.</p></div></div>';
-      const btnTimer = setInterval(() => {
-        const b = document.querySelector("button.primary");
-        if (!b) return;
-        const left = Math.ceil((8000 - (performance.now() - PAGE_ENTERED)) / 1000);
-        if (left <= 0) { b.disabled = false; b.textContent = "Continue"; clearInterval(btnTimer); }
-        else { b.disabled = true; b.textContent = "Continue (" + left + ")"; }
-      }, 250);
-    }
-  },
-  { /* -------- render check (display confirmation; non-blocking flags) -------- */
-    id: "sbcheck",
-    render(c) {
-      c.innerHTML = '<div class="twopane"><div>' + iphonePane(null) + "</div>" +
-        '<div class="rightpane"><h1>Quick display check</h1>' +
-        "<p>Phone screens sometimes render wrong on older browsers. To confirm it displayed properly:</p>" +
-        '<div class="choice"><p><strong>What time does the phone show?</strong></p>' +
-        ["08:47", "09:15", "12:30", "14:02"].map(t => '<label><input type="radio" name="sbt" value="' + t + '">' + t + "</label>").join("") + "</div>" +
-        '<div class="choice"><p><strong>How many jobs are waiting in the queue?</strong></p>' +
-        ["2", "3", "4", "6"].map(t => '<label><input type="radio" name="sbq" value="' + t + '">' + t + "</label>").join("") + "</div></div></div>";
-    },
-    validate() {
-      const t = document.querySelector('input[name="sbt"]:checked'), q = document.querySelector('input[name="sbq"]:checked');
-      if (!t || !q) return "Please answer both.";
-      D.sb_time = t.value; D.sb_time_pass = t.value === "08:47" ? 1 : 0;
-      D.sb_count = q.value; D.sb_count_pass = q.value === "4" ? 1 : 0;
-      return null;
-    }
-  },
-  { /* -------- practice -------- */
-    id: "practice",
-    render(c) {
-      const s = slider("practice_spd", "Look at the highlighted step. Right now, how quickly will that step run?",
-        "Far below the best that step ever runs", "The very best that step ever runs");
-      currentSliders = [s];
-      c.innerHTML = '<div class="twopane"><div>' + iphonePane(null) + "</div>" +
-        '<div class="rightpane"><div class="jobkicker">Practice</div>' +
-        '<p class="jobtitle">Rotate 2 pages</p><p class="jobmeta">Menu photo · 2 pages · 1.6 MB</p>' +
-        stripHtml("practice") + s.html +
-        '<p class="muted" style="margin-top:10px">Click anywhere on the line to answer — the handle appears once you do. This practice answer isn’t used.</p></div></div>';
+
+  { id:"orient",
+    render(c){
+      const s=slider("practice_spd","Look at the highlighted step, then try the scale. Right now, how quickly will that step run?",
+        "Far below the best that step ever runs","The very best that step ever runs");
+      currentSliders=[s];
+      c.innerHTML='<div class="twopane"><div class="phonecol"><div class="sticky">'+phone(null)+'</div></div>'+
+        '<div class="rightpane"><h1>Here&rsquo;s the screen</h1>'+
+        '<p>A couple of things worth noticing before we start:</p>'+
+        '<div class="note-line"><b>Analysis</b> &mdash; reading and sorting &mdash; can run on the phone or be sent to the servers. <b>Files</b> &mdash; moving and saving &mdash; always happen on the phone. Everything is paused; nothing has run.</div>'+
+        '<p class="steplabel">Sample step &mdash; for practice</p>'+stripHtml("practice")+s.html+
+        '<p class="hint">Click or drag anywhere on the line to answer &mdash; the marker appears once you do. Your practice answer isn&rsquo;t used.</p></div></div>';
       s.wire();
+      const btnTimer=setInterval(()=>{ const b=document.querySelector("button.primary"); if(!b) return;
+        const left=Math.ceil((6000-(performance.now()-PAGE_ENTERED))/1000);
+        if(left<=0){ b.disabled=false; b.textContent="Continue"; clearInterval(btnTimer); }
+        else{ b.disabled=true; b.textContent="Continue ("+left+")"; } },250);
     },
-    validate() { return currentSliders[0].touched() ? null : "Please click on the rating line to answer."; },
-    onExit() { D.practice_spd = currentSliders[0].value(); }
+    validate(){ return currentSliders[0].touched()?null:"Please try the practice slider (click on the line) before continuing."; },
+    onExit(){ D.practice_spd=currentSliders[0].value(); }
   },
-  { id: "job1", render(c) { renderJob(c, 0); }, validate: jobValidate, onExit() { jobSave(0); } },
-  { id: "job2", render(c) { renderJob(c, 1); }, validate: jobValidate, onExit() { jobSave(1); } },
-  { id: "job3", render(c) { renderJob(c, 2); }, validate: jobValidate, onExit() { jobSave(2); } },
-  { id: "job4", render(c) { renderJob(c, 3); }, validate: jobValidate, onExit() { jobSave(3); } },
-  { /* -------- post A: processing check + battery recall -------- */
-    id: "postA",
-    render(c) {
-      const s = slider("pc_processing", "During the <strong>text-reading</strong> jobs, how much of the actual work would the phone itself be doing?",
-        "None of it", "All of it");
-      currentSliders = [s];
-      c.innerHTML = "<h1>About what you saw</h1>" + s.html +
-        '<hr class="rule">' +
-        '<div class="choice"><p><strong>What battery level did the phone show?</strong></p>' +
-        ["11%", "23%", "76%", "88%", "I don’t remember"].map(t => '<label><input type="radio" name="rb" value="' + t + '">' + t + "</label>").join("") + "</div>";
-      s.wire();
+
+  jobPage(0), jobPage(1), jobPage(2), jobPage(3),
+
+  { id:"post1",
+    render(c){
+      const proc=slider("pc_processing","During the two <strong>Scan</strong> tasks, how much of the actual work was the phone itself doing?","None of it","All of it");
+      currentSliders=[proc];
+      currentGrid=likertGrid("belief","How much do you agree with each statement about phones in general?",
+        [{code:"belief_1",text:"A phone with a low battery runs slower, even when it stays on."},
+         {code:"belief_2r",text:"A phone at 20% works exactly as well as a phone at 80%."}],AGREE7);
+      c.innerHTML='<div class="narrow"><h1>A few quick questions</h1>'+proc.html+
+        '<div style="margin-top:24px">'+radioBlock("rb","What battery level did the phone show?",
+          [["11","11%"],["23","23%"],["76","76%"],["88","88%"],["dk","I don’t remember"]])+'</div>'+
+        '<div style="margin-top:26px">'+currentGrid.html+'</div></div>';
+      proc.wire(); wireOpts();
     },
-    validate() {
-      if (!currentSliders[0].touched()) return "Please answer the slider question.";
-      if (!document.querySelector('input[name="rb"]:checked')) return "Please answer the battery question.";
-      return null;
+    validate(){
+      if(!currentSliders[0].touched()) return "Please answer the slider question.";
+      if(!document.querySelector('input[name="rb"]:checked')) return "Please answer the battery question.";
+      return currentGrid.validate();
     },
-    onExit() {
-      D.pc_processing = currentSliders[0].value();
-      D.r_battery = document.querySelector('input[name="rb"]:checked').value;
-      D.r_battery_pass = D.r_battery === (COND.battery + "%") ? 1 : 0;
-    }
-  },
-  { /* -------- post B: beliefs + mechanism -------- */
-    id: "postB",
-    render(c) {
-      currentGrid = likertGrid("belief", "Phones in general — how much do you agree?",
-        [
-          { code: "belief_1", text: "A phone with a low battery runs slower, even when it stays on." },
-          { code: "belief_2r", text: "A phone at 20% works exactly as well as a phone at 80%.", reversed: true }
-        ], AGREE7, { shuffle: false });
-      const opts = shuffleSeeded([
-        ["fuel",  "The phone has less energy to work with, so it gets less done — slower or less thorough — until it’s recharged."],
-        ["os",    "The phone’s software deliberately slows or postpones work to stretch the remaining charge, even when battery-saver is off."],
-        ["state", "A phone that low is just in a worse state all around — most things work worse, whatever the reason."],
-        ["halo",  "It’s more of a general sense than a specific reason — a very low battery just isn’t when a phone is at its best."],
-        ["cal",   "It works exactly the same as at a high charge — it will just shut down sooner."]
-      ]);
-      D.m1_order = opts.map(o => o[0]).join(",");
-      c.innerHTML = "<h1>Your own view</h1>" + currentGrid.html +
-        '<hr class="rule">' +
-        '<div class="choice"><p><strong>When a phone’s battery is very low — say around 10% — but the phone is still on and any battery-saver mode is off, which one statement comes closest to what you believe?</strong></p>' +
-        opts.map(o => '<label><input type="radio" name="m1" value="' + o[0] + '">' + esc(o[1]) + "</label>").join("") +
-        '<label><input type="radio" name="m1" value="other">Other — describe:</label>' +
-        '<input type="text" id="m1_other" style="width:100%;margin-top:4px" maxlength="400">';
-    },
-    validate() {
-      const g = currentGrid.validate(); if (g) return g;
-      const m = document.querySelector('input[name="m1"]:checked');
-      if (!m) return "Please choose the statement closest to your view.";
-      if (m.value === "other" && document.getElementById("m1_other").value.trim().length < 1) return "Please describe your view in the text box.";
-      return null;
-    },
-    onExit() {
+    onExit(){
+      D.pc_processing=currentSliders[0].value();
+      D.r_battery=document.querySelector('input[name="rb"]:checked').value;
+      D.r_battery_pass = D.r_battery===String(COND.battery) ? 1 : 0;
       currentGrid.save();
-      D.m1_mechanism = document.querySelector('input[name="m1"]:checked').value;
-      D.m1_other = document.getElementById("m1_other").value.trim().slice(0, 400);
     }
   },
-  { /* -------- post C: capability + background -------- */
-    id: "postC",
-    render(c) {
-      c.innerHTML = "<h1>Last two questions</h1>" +
-        '<div class="choice"><p><strong>Setting the battery aside: for reading the text off scanned pages, which do you think is more capable — a phone, or a server?</strong></p>' +
-        ["1 — The phone, by a lot", "2", "3", "4 — About equally capable", "5", "6", "7 — The server, by a lot"]
-          .map((t, i) => '<label><input type="radio" name="m3" value="' + (i + 1) + '">' + t + "</label>").join("") + "</div>" +
-        '<div class="choice"><p><strong>Do you have education or work experience in computing, IT, engineering, or electronics?</strong></p>' +
-        ["Yes", "No"].map(t => '<label><input type="radio" name="t1" value="' + t + '">' + t + "</label>").join("") + "</div>" +
-        '<label class="block" for="t2">About how many hours a day do you use your phone?</label>' +
-        '<input type="number" id="t2" min="0" max="24" step="0.5" style="width:110px">';
+
+  { id:"post2",
+    render(c){
+      const opts=shuffleSeeded([
+        ["fuel","The phone has less energy to work with, so it gets less done — slower or less thorough — until it’s recharged."],
+        ["os","The phone’s software deliberately slows or postpones work to stretch the charge, even with battery-saver off."],
+        ["state","A phone that low is just in a worse state all around — most things work worse, whatever the reason."],
+        ["halo","More of a general sense than a specific reason — a very low battery just isn’t when a phone is at its best."],
+        ["cal","It works exactly the same as at a high charge — it will just shut down sooner."]
+      ]);
+      D.m1_order=opts.map(o=>o[0]).join(",");
+      c.innerHTML='<div class="narrow"><h1>Your own view</h1>'+
+        radioBlock("m1","When a phone’s battery is very low — say around 10% — but it’s still on and battery-saver is OFF, which comes closest to what you believe?",opts)+
+        '<div style="margin-top:6px"><label class="opt" style="align-items:center"><input type="radio" name="m1" value="other"><span>Other &mdash;&nbsp;</span><input type="text" id="m1_other" maxlength="300" style="flex:1;margin-left:4px" placeholder="describe"></label></div>'+
+        '<div style="margin-top:26px">'+radioBlock("m3","Setting the battery aside: for reading the text off a batch of photos, which do you think is more capable?",
+          [["1","The phone, by a lot"],["2","The phone, somewhat"],["3","The phone, slightly"],["4","About equal"],["5","The servers, slightly"],["6","The servers, somewhat"],["7","The servers, by a lot"]])+'</div>'+
+        '<div style="margin-top:26px">'+radioBlock("t1","Do you have education or work experience in computing, IT, engineering, or electronics?",[["yes","Yes"],["no","No"]])+'</div>'+
+        '<label class="block" for="t2">About how many hours a day do you use your phone?</label><input type="number" id="t2" min="0" max="24" step="0.5" style="width:120px"></div>';
+      wireOpts();
     },
-    validate() {
-      if (!document.querySelector('input[name="m3"]:checked')) return "Please answer the first question.";
-      if (!document.querySelector('input[name="t1"]:checked')) return "Please answer the second question.";
-      const h = parseFloat(document.getElementById("t2").value);
-      if (!(h >= 0 && h <= 24)) return "Please enter your daily phone hours (0–24).";
+    validate(){
+      const m=document.querySelector('input[name="m1"]:checked');
+      if(!m) return "Please choose the statement closest to your view.";
+      if(m.value==="other" && document.getElementById("m1_other").value.trim().length<1) return "Please describe your view in the box.";
+      if(!document.querySelector('input[name="m3"]:checked')) return "Please answer the capability question.";
+      if(!document.querySelector('input[name="t1"]:checked')) return "Please answer the background question.";
+      const h=parseFloat(document.getElementById("t2").value);
+      if(!(h>=0&&h<=24)) return "Please enter your daily phone hours (0–24).";
       return null;
     },
-    onExit() {
-      D.m3_capability = parseInt(document.querySelector('input[name="m3"]:checked').value, 10);
-      D.t1_tech = document.querySelector('input[name="t1"]:checked').value;
-      D.t2_hours = parseFloat(document.getElementById("t2").value);
+    onExit(){
+      D.m1_mechanism=document.querySelector('input[name="m1"]:checked').value;
+      D.m1_other=document.getElementById("m1_other").value.trim().slice(0,300);
+      D.m3_capability=parseInt(document.querySelector('input[name="m3"]:checked').value,10);
+      D.t1_tech=document.querySelector('input[name="t1"]:checked').value;
+      D.t2_hours=parseFloat(document.getElementById("t2").value);
     }
   },
-  { /* -------- debrief + submit -------- */
-    id: "debrief",
-    nextLabel: "Submit my responses",
-    render(c) {
-      c.innerHTML =
-        '<div class="placeholder-banner">IRB PLACEHOLDER — confirm this debrief wording with your IRB before launching. Delete this banner when done.</div>' +
-        "<h1>What this study was about</h1>" +
-        "<p>Different people saw the phone at different battery levels (11% or 88%), with the text-reading work described as running on the phone or on a server. The screen was created for this study.</p>" +
-        "<p><strong>The fact being studied:</strong> with battery-saver off, a healthy phone works exactly the same at 11% as at 88% — a low battery changes how long the phone runs, not how well it works while it’s on.</p>" +
-        "<p>One request: please don’t describe the study’s details on forums or to others who might take it — knowing what a study is about changes how people answer.</p>" +
-        "<p>Questions? Contact the researcher via the recruitment platform. Click below to submit and receive your completion code.</p>";
+
+  { id:"debrief", nextLabel:"Submit my responses",
+    render(c){
+      c.innerHTML=
+        '<div class="placeholder-banner">IRB PLACEHOLDER — confirm this debrief with your IRB before launch. Delete this banner when done.</div>'+
+        '<h1 class="big">What this was about</h1>'+
+        '<p class="lede">Different people saw the phone at different battery levels (11% or 88%), with the analysis described as running on the phone or on the company&rsquo;s servers. The screen was built for this study.</p>'+
+        '<p class="lede"><strong>The fact being studied:</strong> with battery-saver off, a healthy phone does its work exactly the same at 11% as at 88% &mdash; a low battery changes how long it runs, not how well it works while it&rsquo;s on.</p>'+
+        '<p>One request: please don&rsquo;t describe the study&rsquo;s details to others who might take it &mdash; knowing what a study is about changes how people answer. Thank you.</p>';
     }
   }
 ];
-const PAGE_INDEX = {}; PAGES.forEach((p, i) => PAGE_INDEX[p.id] = i);
 
-function renderJob(c, idx) {
-  const key = JOB_SEQ[idx]; const j = JOBS[key];
-  const s1 = slider("spd_" + key, "Look at the highlighted step. Right now, how quickly will that step run?",
-    "Far below the best that step ever runs", "The very best that step ever runs");
-  const s2 = slider("st_" + key, "How likely is it that this step stalls, or has to be retried?",
-    "Not at all likely", "Extremely likely");
-  currentSliders = [s1, s2];
-  c.innerHTML = '<div class="twopane"><div>' + iphonePane(key) + "</div>" +
-    '<div class="rightpane"><div class="jobkicker">Job ' + (idx + 1) + " of 4</div>" +
-    '<p class="jobtitle">' + esc(j.act) + '</p><p class="jobmeta">' + esc(j.doc) + " · " + j.meta + "</p>" +
-    stripHtml(key) + s1.html + s2.html + "</div></div>";
-  s1.wire(); s2.wire();
+function jobPage(idx){
+  return { id:"job"+(idx+1),
+    render(c){
+      const key=JOB_SEQ[idx], j=JOBS[key];
+      const s1=slider("spd_"+key,"Look at the highlighted step. Right now, how quickly will that step run?",
+        "Far below the best that step ever runs","The very best that step ever runs");
+      const s2=slider("st_"+key,"How likely is it that this step stalls, or has to be retried?","Not at all likely","Extremely likely");
+      currentSliders=[s1,s2];
+      c.innerHTML='<div class="twopane"><div class="phonecol"><div class="sticky">'+phone(key)+'</div></div>'+
+        '<div class="rightpane"><p class="steplabel">Task '+(idx+1)+' of 4</p>'+
+        '<p class="jobtitle">'+esc(j.nm)+'</p><p class="jobmeta">'+esc(j.meta)+'</p>'+
+        stripHtml(key)+s1.html+s2.html+'</div></div>';
+      s1.wire(); s2.wire();
+    },
+    validate(){ for(const s of currentSliders) if(!s.touched()) return "Please answer both rating lines (click on each)."; return null; },
+    onExit(){ const key=JOB_SEQ[idx]; D["spd_"+key]=currentSliders[0].value(); D["st_"+key]=currentSliders[1].value(); }
+  };
 }
-function jobValidate() {
-  for (const s of currentSliders) if (!s.touched()) return "Please answer both rating lines (click on them).";
-  return null;
-}
-function jobSave(idx) {
-  const key = JOB_SEQ[idx];
-  D["spd_" + key] = currentSliders[0].value();
-  D["st_" + key] = currentSliders[1].value();
-}
+const PAGE_INDEX={}; PAGES.forEach((p,i)=>PAGE_INDEX[p.id]=i);
 
-/* -------- terminal pages -------- */
-function app() { return document.getElementById("app"); }
-function renderDeviceBlock() {
-  logEvent("screenout_device", { ua: navigator.userAgent.slice(0, 180) });
-  app().innerHTML = "<h1>Desktop or laptop required</h1>" +
-    "<p>This study can only be completed on a desktop or laptop computer, and it looks like you are using a phone or tablet.</p>" +
-    "<p>Please <strong>return your submission</strong> on the recruitment platform — you will not be penalized. " +
-    "You are welcome to start again from a desktop or laptop.</p>";
+/* ---------- terminal ---------- */
+function app(){ return document.getElementById("app"); }
+function renderDeviceBlock(){
+  logEvent("screenout_device",{ua:navigator.userAgent.slice(0,180)});
+  app().innerHTML='<h1 class="big">Desktop or laptop required</h1>'+
+    '<p class="lede">This study can only be completed on a desktop or laptop, and it looks like you&rsquo;re on a phone or tablet.</p>'+
+    '<p>Please <strong>return your submission</strong> on the recruitment platform &mdash; you won&rsquo;t be penalized. You&rsquo;re welcome to start again from a computer.</p>';
 }
-function renderAlreadyDone() {
-  app().innerHTML = "<h1>Already completed</h1><p>Our records show this study has already been completed on this browser. " +
-    "If you believe this is an error, please contact the researcher via the recruitment platform.</p>";
+function renderAlreadyDone(){
+  app().innerHTML='<h1 class="big">Already completed</h1><p class="lede">Our records show this study was already completed on this browser. If you believe this is an error, contact the researcher via the platform.</p>';
 }
-function renderComplete(saved) {
-  const cc = CONFIG.completion;
-  let inner = "<h1>Thank you!</h1><p>Your responses have been " + (saved ? "recorded" : "prepared") + ".</p>";
-  if (!saved && !OFFLINE) {
-    inner += '<p class="error" style="display:block">We had trouble reaching our server. Your completion is still valid — ' +
-      "please copy the text below and send it to the researcher via the platform so no data is lost.</p>" +
-      '<textarea readonly style="min-height:80px;width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px">' + esc(JSON.stringify(D)) + "</textarea>";
+function renderComplete(saved){
+  const cc=CONFIG.completion;
+  let inner='<h1 class="big">Thank you</h1><p class="lede">Your responses have been '+(saved?"recorded":"prepared")+'.</p>';
+  if(!saved&&!OFFLINE){
+    inner+='<p class="error" style="display:block">We had trouble reaching our server. Your completion is still valid &mdash; please copy the text below and send it to the researcher via the platform so no data is lost.</p>'+
+      '<textarea readonly style="width:100%;min-height:90px;font:inherit;padding:10px;border:1px solid var(--line);border-radius:12px">'+esc(JSON.stringify(D))+'</textarea>';
   }
-  if (cc.platform === "prolific") {
-    inner += "<p>Your completion code is <code class='cc'>" + esc(cc.code) + "</code></p>" +
-      "<p>You will be redirected to Prolific shortly. If not, <a href='" + esc(cc.prolificRedirect + cc.code) + "'>click here</a>.</p>";
-    setTimeout(() => { location.href = cc.prolificRedirect + cc.code; }, 4000);
+  if(cc.platform==="prolific"){
+    inner+='<p>Your completion code is <code class="cc">'+esc(cc.code)+'</code></p><p class="muted">You&rsquo;ll be redirected to Prolific shortly. If not, <a href="'+esc(cc.prolificRedirect+cc.code)+'">click here</a>.</p>';
+    setTimeout(()=>{ location.href=cc.prolificRedirect+cc.code; },4000);
   } else {
-    inner += "<p>Your completion code is <code class='cc'>" + esc(cc.code) + "</code></p><p>Please copy it back into the study page on the platform.</p>";
+    inner+='<p>Your completion code is <code class="cc">'+esc(cc.code)+'</code></p><p class="muted">Please paste it back into the study page on the platform.</p>';
   }
-  app().innerHTML = inner;
-  try { localStorage.setItem("study_done_" + CONFIG.studyName, "1"); } catch (e) {}
+  app().innerHTML=inner;
+  try{ localStorage.setItem("study_done_"+CONFIG.studyName,"1"); }catch(e){}
 }
 
 /* ================= 8. Engine ================= */
-const START_MS = Date.now();
-let CURRENT = -1, CURRENT_PAGE_ID = "load", PAGE_ENTERED = 0;
-function showPage(i, isBack) {
-  const page = PAGES[i];
-  if (CURRENT >= 0 && !isBack)
-    D["t_" + PAGES[CURRENT].id + "_ms"] = (D["t_" + PAGES[CURRENT].id + "_ms"] || 0) + Math.round(performance.now() - PAGE_ENTERED);
-  CURRENT = i; CURRENT_PAGE_ID = page.id; PAGE_ENTERED = performance.now();
-  document.querySelector("#progress > div").style.width = Math.round((i / PAGES.length) * 100) + "%";
-  const c = app(); c.innerHTML = "";
+const START_MS=Date.now();
+let CURRENT=-1, CURRENT_PAGE_ID="load", PAGE_ENTERED=0;
+function showPage(i){
+  const page=PAGES[i];
+  if(CURRENT>=0) D["t_"+PAGES[CURRENT].id+"_ms"]=(D["t_"+PAGES[CURRENT].id+"_ms"]||0)+Math.round(performance.now()-PAGE_ENTERED);
+  CURRENT=i; CURRENT_PAGE_ID=page.id; PAGE_ENTERED=performance.now();
+  document.querySelector("#progress > div").style.width=Math.round((i/PAGES.length)*100)+"%";
+  const c=app(); c.innerHTML="";
   page.render(c);
-  const err = el('<div class="error" role="alert"></div>');
-  const btn = el('<button class="primary">' + esc(page.nextLabel || "Continue") + "</button>");
+  const err=el('<div class="error" role="alert"></div>');
+  const btn=el('<button class="primary">'+esc(page.nextLabel||"Continue")+'</button>');
   c.appendChild(err); c.appendChild(btn);
-  if (page.id === "stimulus") { btn.disabled = true; }
-  btn.addEventListener("click", async () => {
-    const msg = page.validate ? page.validate() : null;
-    if (msg === "__handled__") return;
-    if (msg) { err.textContent = msg; err.style.display = "block"; return; }
-    err.style.display = "none"; btn.disabled = true; btn.textContent = "…";
-    D["t_" + page.id + "_ms"] = (D["t_" + page.id + "_ms"] || 0) + Math.round(performance.now() - PAGE_ENTERED);
-    try { if (page.onExit) await page.onExit(); } catch (e) { console.error(e); }
-    if (i + 1 < PAGES.length) showPage(i + 1);
-    else { const ok = await submitData(); renderComplete(ok); }
+  if(page.id==="orient") btn.disabled=true;
+  btn.addEventListener("click",async()=>{
+    const msg=page.validate?page.validate():null;
+    if(msg){ err.textContent=msg; err.style.display="block"; return; }
+    err.style.display="none"; btn.disabled=true; btn.textContent="…";
+    D["t_"+page.id+"_ms"]=(D["t_"+page.id+"_ms"]||0)+Math.round(performance.now()-PAGE_ENTERED);
+    try{ if(page.onExit) await page.onExit(); }catch(e){ console.error(e); }
+    if(i+1<PAGES.length) showPage(i+1);
+    else{ const ok=await submitData(); renderComplete(ok); }
   });
-  scrollTo(0, 0);
+  scrollTo(0,0);
 }
 
 /* ================= 9. Boot ================= */
-(function boot() {
-  if (OFFLINE) document.body.appendChild(el('<div style="position:fixed;top:0;left:0;right:0;background:#92400e;color:#fff;text-align:center;padding:4px;font-size:.8rem;z-index:50">OFFLINE PREVIEW MODE — no endpoint configured; data logged to console only</div>'));
+(function boot(){
+  if(OFFLINE) document.body.appendChild(el('<div style="position:fixed;top:0;left:0;right:0;background:#8a4a2e;color:#fff;text-align:center;padding:4px;font-size:.8rem;z-index:50">OFFLINE PREVIEW MODE — no endpoint configured; data logged to console only</div>'));
   captureIds(); captureMeta(); hashIp();
-  D.ts_start = new Date().toISOString();
-  if (localStorage.getItem("study_done_" + CONFIG.studyName)) { renderAlreadyDone(); return; }
-  if (CONFIG.desktopOnly && isMobile()) { renderDeviceBlock(); return; }
-  logEvent("start", {});
+  D.ts_start=new Date().toISOString();
+  if(localStorage.getItem("study_done_"+CONFIG.studyName)){ renderAlreadyDone(); return; }
+  if(CONFIG.desktopOnly&&isMobile()){ renderDeviceBlock(); return; }
+  logEvent("start",{});
   showPage(0);
 })();
 </script>
